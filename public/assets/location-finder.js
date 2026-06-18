@@ -45,6 +45,7 @@
 		var citySelect = form.querySelector( '[data-ch-pseo-finder="city"]' );
 		var submit = form.querySelector( '.ch-pseo-finder-submit' );
 		var currentMappings = [];
+		var currentTypes = [];
 		var selectedUrl = '';
 
 		function fieldRow( type ) {
@@ -59,25 +60,30 @@
 			return select && select.value ? Number( select.value ) : 0;
 		}
 
-		function mappingMatches( mapping ) {
-			var countryId = selectedId( countrySelect );
-			var stateId = selectedId( stateSelect );
-			var cityId = selectedId( citySelect );
+		function typeIsVisible( type ) {
+			return currentTypes.indexOf( type ) !== -1;
+		}
 
-			return ( ! countryId || ( mapping.country && mapping.country.id === countryId ) ) &&
-				( ! stateId || ( mapping.state && mapping.state.id === stateId ) ) &&
-				( ! cityId || ( mapping.city && mapping.city.id === cityId ) );
+		function mappingId( mapping, type ) {
+			return mapping[ type ] ? mapping[ type ].id : 0;
+		}
+
+		function selectedTypeId( type ) {
+			var selects = {
+				country: countrySelect,
+				state: stateSelect,
+				city: citySelect
+			};
+
+			return typeIsVisible( type ) ? selectedId( selects[ type ] ) : 0;
 		}
 
 		function updateTarget() {
 			selectedUrl = '';
-			var countryId = selectedId( countrySelect );
-			var stateId = selectedId( stateSelect );
-			var cityId = selectedId( citySelect );
 			var exact = currentMappings.filter( function ( mapping ) {
-				return ( mapping.country ? mapping.country.id : 0 ) === countryId &&
-					( mapping.state ? mapping.state.id : 0 ) === stateId &&
-					( mapping.city ? mapping.city.id : 0 ) === cityId;
+				return currentTypes.every( function ( type ) {
+					return mappingId( mapping, type ) === selectedTypeId( type );
+				} );
 			} );
 
 			if ( exact.length === 1 ) {
@@ -89,10 +95,10 @@
 
 		function updateCities() {
 			var filtered = currentMappings.filter( function ( mapping ) {
-				var countryId = selectedId( countrySelect );
-				var stateId = selectedId( stateSelect );
-				return ( ! countryId || ( mapping.country && mapping.country.id === countryId ) ) &&
-					( ! stateId || ( mapping.state && mapping.state.id === stateId ) );
+				var countryId = selectedTypeId( 'country' );
+				var stateId = selectedTypeId( 'state' );
+				return ( ! typeIsVisible( 'country' ) || ! countryId || mappingId( mapping, 'country' ) === countryId ) &&
+					( ! typeIsVisible( 'state' ) || ! stateId || mappingId( mapping, 'state' ) === stateId );
 			} );
 
 			fillSelect( citySelect, uniqueOptions( filtered, 'city' ), 'Select city' );
@@ -100,9 +106,9 @@
 		}
 
 		function updateStates() {
-			var countryId = selectedId( countrySelect );
+			var countryId = selectedTypeId( 'country' );
 			var filtered = currentMappings.filter( function ( mapping ) {
-				return ! countryId || ( mapping.country && mapping.country.id === countryId );
+				return ! typeIsVisible( 'country' ) || ! countryId || mappingId( mapping, 'country' ) === countryId;
 			} );
 
 			fillSelect( stateSelect, uniqueOptions( filtered, 'state' ), 'Select state' );
@@ -111,12 +117,12 @@
 
 		serviceSelect.addEventListener( 'change', function () {
 			var service = data.services[ serviceSelect.value ];
-			var types = visibleTypes( service ? service.structure : '' );
+			currentTypes = visibleTypes( service ? service.structure : '' );
 			currentMappings = service ? service.mappings : [];
 			selectedUrl = '';
 
 			[ 'country', 'state', 'city' ].forEach( function ( type ) {
-				fieldRow( type ).hidden = types.indexOf( type ) === -1;
+				fieldRow( type ).hidden = ! typeIsVisible( type );
 			} );
 
 			fillSelect( countrySelect, uniqueOptions( currentMappings, 'country' ), 'Select country' );

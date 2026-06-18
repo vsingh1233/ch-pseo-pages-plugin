@@ -17,7 +17,7 @@ class CH_PSEO_Shortcodes {
 	 *
 	 * @var string
 	 */
-	const LOCATION_TREE_CACHE_KEY = 'ch_pseo_location_tree_v1';
+	const LOCATION_TREE_CACHE_KEY = 'ch_pseo_location_tree_v2';
 
 	/**
 	 * Current request context.
@@ -218,6 +218,13 @@ class CH_PSEO_Shortcodes {
 		$state   = $this->context->get( 'state', array() );
 		$city    = $this->context->get( 'city', array() );
 		$base    = trim( $service['url_base'], '/' );
+		$structure_locations = array(
+			'country'            => array( $country ),
+			'country_state'      => array( $country, $state ),
+			'country_state_city' => array( $country, $state, $city ),
+			'state'              => array( $state ),
+			'state_city'         => array( $state, $city ),
+		);
 		$items   = array(
 			array(
 				'label' => __( 'Home', 'ch-pseo-pages-plugin' ),
@@ -230,7 +237,11 @@ class CH_PSEO_Shortcodes {
 		);
 		$path = $base;
 
-		foreach ( array( $country, $state, $city ) as $location ) {
+		$locations = isset( $structure_locations[ $service['location_structure'] ] )
+			? $structure_locations[ $service['location_structure'] ]
+			: array();
+
+		foreach ( $locations as $location ) {
 			if ( empty( $location['name'] ) || empty( $location['slug'] ) ) {
 				continue;
 			}
@@ -242,16 +253,20 @@ class CH_PSEO_Shortcodes {
 			);
 		}
 
-		$output = '<nav class="ch-pseo-breadcrumbs" aria-label="' . esc_attr__( 'Breadcrumbs', 'ch-pseo-pages-plugin' ) . '"><ol>';
+		$output = '<nav class="ch-pseo-breadcrumbs" aria-label="' . esc_attr__( 'Breadcrumbs', 'ch-pseo-pages-plugin' ) . '">';
+		$output .= '<ol itemscope itemtype="https://schema.org/BreadcrumbList">';
 		$last   = count( $items ) - 1;
 
 		foreach ( $items as $index => $item ) {
-			$output .= '<li>';
+			$output .= '<li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">';
 			if ( $index === $last ) {
-				$output .= '<span aria-current="page">' . esc_html( $item['label'] ) . '</span>';
+				$output .= '<span itemprop="name" aria-current="page">' . esc_html( $item['label'] ) . '</span>';
 			} else {
-				$output .= '<a href="' . esc_url( $item['url'] ) . '">' . esc_html( $item['label'] ) . '</a>';
+				$output .= '<a itemprop="item" href="' . esc_url( $item['url'] ) . '">';
+				$output .= '<span itemprop="name">' . esc_html( $item['label'] ) . '</span>';
+				$output .= '</a>';
 			}
+			$output .= '<meta itemprop="position" content="' . esc_attr( $index + 1 ) . '">';
 			$output .= '</li>';
 		}
 
@@ -317,6 +332,7 @@ class CH_PSEO_Shortcodes {
 	 */
 	public static function clear_location_tree_cache() {
 		delete_transient( self::LOCATION_TREE_CACHE_KEY );
+		delete_transient( 'ch_pseo_location_tree_v1' );
 	}
 
 	/**
@@ -339,6 +355,9 @@ class CH_PSEO_Shortcodes {
 	 * @return array<string, mixed>
 	 */
 	private function get_location_tree() {
+		// Remove the pre-structure-aware cache after upgrading this implementation.
+		delete_transient( 'ch_pseo_location_tree_v1' );
+
 		$tree = get_transient( self::LOCATION_TREE_CACHE_KEY );
 
 		if ( is_array( $tree ) ) {
@@ -356,6 +375,9 @@ class CH_PSEO_Shortcodes {
 					s.service_name,
 					s.url_base,
 					s.location_structure,
+					sl.country_id AS mapped_country_id,
+					sl.state_id AS mapped_state_id,
+					sl.city_id AS mapped_city_id,
 					co.id AS country_id,
 					co.name AS country_name,
 					co.slug AS country_slug,
@@ -367,12 +389,15 @@ class CH_PSEO_Shortcodes {
 					ci.slug AS city_slug
 				FROM {$tables['service_locations']} sl
 				INNER JOIN {$tables['services']} s ON s.id = sl.service_id AND s.status = %s
+				INNER JOIN {$wpdb->posts} p ON p.ID = s.template_page_id AND p.post_type = %s AND p.post_status = %s
 				LEFT JOIN {$tables['countries']} co ON co.id = sl.country_id AND co.status = %s
 				LEFT JOIN {$tables['states']} st ON st.id = sl.state_id AND st.status = %s
 				LEFT JOIN {$tables['cities']} ci ON ci.id = sl.city_id AND ci.status = %s
 				WHERE sl.status = %s
 				ORDER BY s.service_name, co.name, st.name, ci.name",
 				'active',
+				'page',
+				'publish',
 				'active',
 				'active',
 				'active',
@@ -385,27 +410,10 @@ class CH_PSEO_Shortcodes {
 
 		foreach ( $rows as $row ) {
 			$service_id = (string) $row['service_id'];
-			$segments   = array();
+			$segments   = $this->get_finder_url_segments( $row );
 
-			if ( 0 === strpos( $row['location_structure'], 'country' ) ) {
-				if ( empty( $row['country_slug'] ) ) {
-					continue;
-				}
-				$segments[] = $row['country_slug'];
-				if ( ! empty( $row['state_slug'] ) ) {
-					$segments[] = $row['state_slug'];
-				}
-				if ( ! empty( $row['city_slug'] ) ) {
-					$segments[] = $row['city_slug'];
-				}
-			} else {
-				if ( empty( $row['state_slug'] ) ) {
-					continue;
-				}
-				$segments[] = $row['state_slug'];
-				if ( ! empty( $row['city_slug'] ) ) {
-					$segments[] = $row['city_slug'];
-				}
+			if ( false === $segments ) {
+				continue;
 			}
 
 			if ( ! isset( $tree['services'][ $service_id ] ) ) {
@@ -419,7 +427,9 @@ class CH_PSEO_Shortcodes {
 			$tree['services'][ $service_id ]['mappings'][] = array(
 				'id'      => (int) $row['mapping_id'],
 				'url'     => home_url( user_trailingslashit( trim( $row['url_base'], '/' ) . '/' . implode( '/', $segments ) ) ),
-				'country' => $this->location_tree_item( $row['country_id'], $row['country_name'] ),
+				'country' => 0 === strpos( $row['location_structure'], 'country' )
+					? $this->location_tree_item( $row['country_id'], $row['country_name'] )
+					: null,
 				'state'   => $this->location_tree_item( $row['state_id'], $row['state_name'] ),
 				'city'    => $this->location_tree_item( $row['city_id'], $row['city_name'] ),
 			);
@@ -427,6 +437,66 @@ class CH_PSEO_Shortcodes {
 
 		set_transient( self::LOCATION_TREE_CACHE_KEY, $tree, DAY_IN_SECONDS );
 		return $tree;
+	}
+
+	/**
+	 * Builds finder URL segments using the same shapes accepted by the router.
+	 *
+	 * @param array $row Mapping and location data.
+	 * @return string[]|false
+	 */
+	private function get_finder_url_segments( $row ) {
+		if (
+			( $row['mapped_country_id'] && ! $row['country_slug'] )
+			|| ( $row['mapped_state_id'] && ! $row['state_slug'] )
+			|| ( $row['mapped_city_id'] && ! $row['city_slug'] )
+		) {
+			return false;
+		}
+
+		switch ( $row['location_structure'] ) {
+			case 'country':
+				return $row['country_slug'] ? array( $row['country_slug'] ) : false;
+
+			case 'country_state':
+				if ( ! $row['country_slug'] ) {
+					return false;
+				}
+				return $row['state_slug']
+					? array( $row['country_slug'], $row['state_slug'] )
+					: array( $row['country_slug'] );
+
+			case 'country_state_city':
+				if ( ! $row['country_slug'] ) {
+					return false;
+				}
+
+				$segments = array( $row['country_slug'] );
+				if ( $row['state_slug'] ) {
+					$segments[] = $row['state_slug'];
+				}
+				if ( $row['city_slug'] ) {
+					if ( ! $row['state_slug'] ) {
+						return false;
+					}
+					$segments[] = $row['city_slug'];
+				}
+				return $segments;
+
+			case 'state':
+				return $row['state_slug'] ? array( $row['state_slug'] ) : false;
+
+			case 'state_city':
+				if ( ! $row['state_slug'] ) {
+					return false;
+				}
+				return $row['city_slug']
+					? array( $row['state_slug'], $row['city_slug'] )
+					: array( $row['state_slug'] );
+
+			default:
+				return false;
+		}
 	}
 
 	/**
