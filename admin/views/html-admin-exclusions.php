@@ -94,7 +94,7 @@ $exclusion = wp_parse_args(
 					<?php else : ?>
 						<?php foreach ( $exclusions as $row ) : ?>
 							<?php
-							$edit_url = add_query_arg(
+							$edit_url   = add_query_arg(
 								array(
 									'page'         => 'ch-pseo-exclusions',
 									'exclusion_id' => $row['id'],

@@ -19,9 +19,9 @@ class CH_PSEO_Activator {
 	 */
 	public static function activate() {
 		$database = new CH_PSEO_Database();
-		$database->create_tables();
-
-		update_option( 'ch_pseo_version', CH_PSEO_VERSION );
+		$migrator = new CH_PSEO_Migrator( $database );
+		$migrator->migrate();
+		CH_PSEO_Router::clear_rewrite_definitions_cache();
 
 		$router = new CH_PSEO_Router( $database, new CH_PSEO_Context() );
 		$router->register_rewrite_rules();

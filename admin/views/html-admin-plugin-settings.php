@@ -42,18 +42,11 @@ $titles = array(
 						<td><input class="regular-text" id="seo-title-suffix" name="seo_default_title_suffix" type="text" value="<?php echo esc_attr( $settings['seo_default_title_suffix'] ); ?>" placeholder="| Site Name"></td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="seo-default-robots"><?php esc_html_e( 'Default robots', 'ch-pseo-pages-plugin' ); ?></label></th>
-						<td>
-							<select id="seo-default-robots" name="seo_default_robots">
-								<?php foreach ( $robots_options as $value => $label ) : ?>
-									<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $settings['seo_default_robots'], $value ); ?>><?php echo esc_html( $label ); ?></option>
-								<?php endforeach; ?>
-							</select>
-						</td>
-					</tr>
-					<tr>
 						<th scope="row"><?php esc_html_e( 'Yoast integration', 'ch-pseo-pages-plugin' ); ?></th>
-						<td><label><input name="seo_enable_yoast" type="checkbox" value="1" <?php checked( '1', $settings['seo_enable_yoast'] ); ?>> <?php esc_html_e( 'Enable Yoast SEO filters for PSEO requests', 'ch-pseo-pages-plugin' ); ?></label></td>
+						<td>
+							<label><input name="seo_enable_yoast" type="checkbox" value="1" <?php checked( '1', $settings['seo_enable_yoast'] ); ?>> <?php esc_html_e( 'Enable Yoast SEO filters for PSEO requests', 'ch-pseo-pages-plugin' ); ?></label>
+							<p class="description"><?php esc_html_e( 'When Yoast is unavailable, CH-PSEO outputs standalone titles, descriptions, canonicals, robots directives, and JSON-LD. When Yoast is active but this option is disabled, Yoast retains its normal template-page output.', 'ch-pseo-pages-plugin' ); ?></p>
+						</td>
 					</tr>
 				<?php elseif ( 'schema' === $section ) : ?>
 					<tr>
@@ -79,7 +72,10 @@ $titles = array(
 					</tr>
 					<tr>
 						<th scope="row"><label for="sitemap-max-urls"><?php esc_html_e( 'Maximum URLs per sitemap', 'ch-pseo-pages-plugin' ); ?></label></th>
-						<td><input id="sitemap-max-urls" name="sitemap_max_urls" type="number" min="1" max="50000" value="<?php echo esc_attr( $settings['sitemap_max_urls'] ); ?>"></td>
+						<td>
+							<input id="sitemap-max-urls" name="sitemap_max_urls" type="number" min="1" max="50000" value="<?php echo esc_attr( $settings['sitemap_max_urls'] ); ?>">
+							<p class="description"><?php esc_html_e( 'When eligible URLs exceed this value, the configured sitemap filename becomes an index linking to numbered child sitemaps.', 'ch-pseo-pages-plugin' ); ?></p>
+						</td>
 					</tr>
 				<?php endif; ?>
 			</table>

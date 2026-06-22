@@ -38,6 +38,27 @@
 		} );
 	} );
 
+	document.querySelectorAll( '[data-ch-pseo-select-all]' ).forEach( function ( selectAll ) {
+		var form = selectAll.closest( 'form' );
+		if ( ! form ) {
+			return;
+		}
+		selectAll.addEventListener( 'change', function () {
+			form.querySelectorAll( '[data-ch-pseo-select-item]' ).forEach( function ( item ) {
+				item.checked = selectAll.checked;
+			} );
+		} );
+	} );
+
+	document.querySelectorAll( '[data-ch-pseo-bulk-form]' ).forEach( function ( form ) {
+		form.addEventListener( 'submit', function ( event ) {
+			var action = form.querySelector( '[name="bulk_action"]' );
+			if ( action && action.value === 'delete' && ! window.confirm( 'Delete the selected items and their dependent mappings?' ) ) {
+				event.preventDefault();
+			}
+		} );
+	} );
+
 	var serviceField = document.getElementById( 'mapping-service' );
 
 	if ( serviceField ) {

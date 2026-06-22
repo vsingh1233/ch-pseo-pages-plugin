@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<ruleset name="CH PSEO Pages Plugin">
+	<description>WordPress and PHP compatibility rules for the CH-PSEO Pages Plugin.</description>
+
+	<file>ch-pseo-pages-plugin.php</file>
+	<file>uninstall.php</file>
+	<file>includes</file>
+	<file>admin</file>
+	<file>public</file>
+	<file>tests</file>
+
+	<exclude-pattern>*/vendor/*</exclude-pattern>
+
+	<arg name="basepath" value="."/>
+	<arg name="cache" value=".phpcs-cache"/>
+	<arg name="colors"/>
+	<arg name="extensions" value="php"/>
+	<arg name="warning-severity" value="0"/>
+	<arg value="sp"/>
+
+	<config name="minimum_supported_wp_version" value="6.2"/>
+	<config name="testVersion" value="7.4-"/>
+
+	<rule ref="WordPress"/>
+	<rule ref="PHPCompatibilityWP"/>
+
+	<!--
+		Table identifiers are generated internally from $wpdb->prefix and cannot
+		be represented by SQL value placeholders.
+	-->
+	<rule ref="WordPress.DB.PreparedSQL.InterpolatedNotPrepared">
+		<exclude-pattern>*/admin/class-ch-pseo-admin.php</exclude-pattern>
+		<exclude-pattern>*/includes/class-ch-pseo-database.php</exclude-pattern>
+		<exclude-pattern>*/includes/class-ch-pseo-importer.php</exclude-pattern>
+		<exclude-pattern>*/includes/class-ch-pseo-router.php</exclude-pattern>
+		<exclude-pattern>*/includes/class-ch-pseo-schema.php</exclude-pattern>
+		<exclude-pattern>*/includes/class-ch-pseo-seo.php</exclude-pattern>
+		<exclude-pattern>*/includes/class-ch-pseo-shortcodes.php</exclude-pattern>
+		<exclude-pattern>*/includes/class-ch-pseo-sitemap.php</exclude-pattern>
+		<exclude-pattern>*/tests/integration/class-ch-pseo-csv-import-smoke-test.php</exclude-pattern>
+	</rule>
+
+	<!-- The sitemap LIMIT clause is constructed from a bounded integer. -->
+	<rule ref="WordPress.DB.PreparedSQL.NotPrepared">
+		<exclude-pattern>*/includes/class-ch-pseo-sitemap.php</exclude-pattern>
+	</rule>
+
+	<!-- Admin handlers verify their nonce through authorize_action() first. -->
+	<rule ref="WordPress.Security.NonceVerification.Missing">
+		<exclude-pattern>*/admin/class-ch-pseo-admin.php</exclude-pattern>
+	</rule>
+
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="ch-pseo-pages-plugin"/>
+			</property>
+		</properties>
+	</rule>
+</ruleset>

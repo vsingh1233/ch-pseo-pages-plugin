@@ -26,7 +26,7 @@ defined( 'ABSPATH' ) || exit;
 
 	<div class="ch-pseo-panel ch-pseo-settings-panel">
 		<h2><?php esc_html_e( 'Sitemap Cache and URL Export', 'ch-pseo-pages-plugin' ); ?></h2>
-		<p><?php esc_html_e( 'The generated sitemap XML is cached for 12 hours. Relevant service, location, mapping, and sitemap-setting changes clear it automatically.', 'ch-pseo-pages-plugin' ); ?></p>
+		<p><?php esc_html_e( 'The sitemap index and each numbered URL page are cached independently for 12 hours. Relevant service, location, mapping, and sitemap-setting changes rotate the complete cache generation automatically.', 'ch-pseo-pages-plugin' ); ?></p>
 		<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
 			<input type="hidden" name="action" value="ch_pseo_clear_sitemap_cache">
 			<?php wp_nonce_field( 'ch_pseo_clear_sitemap_cache' ); ?>
@@ -50,6 +50,105 @@ defined( 'ABSPATH' ) || exit;
 	</div>
 
 	<div class="ch-pseo-panel ch-pseo-settings-panel">
+		<h2><?php esc_html_e( 'Dynamic Values Reference', 'ch-pseo-pages-plugin' ); ?></h2>
+		<p>
+			<?php esc_html_e( 'Use tokens in CH-PSEO configuration fields such as meta title, meta description, and H1 templates. Use shortcodes inside the reusable WordPress template page or page-builder content.', 'ch-pseo-pages-plugin' ); ?>
+		</p>
+
+		<table class="widefat striped">
+			<thead>
+				<tr>
+					<th><?php esc_html_e( 'Dynamic value', 'ch-pseo-pages-plugin' ); ?></th>
+					<th><?php esc_html_e( 'Configuration token', 'ch-pseo-pages-plugin' ); ?></th>
+					<th><?php esc_html_e( 'Template-page shortcode', 'ch-pseo-pages-plugin' ); ?></th>
+					<th><?php esc_html_e( 'Example output', 'ch-pseo-pages-plugin' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td><?php esc_html_e( 'Service name', 'ch-pseo-pages-plugin' ); ?></td>
+					<td><code>{service_name}</code></td>
+					<td><code>[ch_pseo_service_name]</code></td>
+					<td><?php esc_html_e( 'Assignment Writing', 'ch-pseo-pages-plugin' ); ?></td>
+				</tr>
+				<tr>
+					<td><?php esc_html_e( 'Service slug', 'ch-pseo-pages-plugin' ); ?></td>
+					<td><code>{service_slug}</code></td>
+					<td>&mdash;</td>
+					<td><code>assignment-writing</code></td>
+				</tr>
+				<tr>
+					<td><?php esc_html_e( 'Base prefix', 'ch-pseo-pages-plugin' ); ?></td>
+					<td><code>{url_base}</code></td>
+					<td>&mdash;</td>
+					<td><code>services</code></td>
+				</tr>
+				<tr>
+					<td><?php esc_html_e( 'Country', 'ch-pseo-pages-plugin' ); ?></td>
+					<td><code>{country}</code> / <code>{country_name}</code></td>
+					<td><code>[ch_pseo_country]</code></td>
+					<td><?php esc_html_e( 'India', 'ch-pseo-pages-plugin' ); ?></td>
+				</tr>
+				<tr>
+					<td><?php esc_html_e( 'State', 'ch-pseo-pages-plugin' ); ?></td>
+					<td><code>{state}</code> / <code>{state_name}</code></td>
+					<td><code>[ch_pseo_state]</code></td>
+					<td><?php esc_html_e( 'Tamil Nadu', 'ch-pseo-pages-plugin' ); ?></td>
+				</tr>
+				<tr>
+					<td><?php esc_html_e( 'City', 'ch-pseo-pages-plugin' ); ?></td>
+					<td><code>{city}</code> / <code>{city_name}</code></td>
+					<td><code>[ch_pseo_city]</code></td>
+					<td><?php esc_html_e( 'Chennai', 'ch-pseo-pages-plugin' ); ?></td>
+				</tr>
+				<tr>
+					<td><?php esc_html_e( 'Current location', 'ch-pseo-pages-plugin' ); ?></td>
+					<td><code>{location}</code></td>
+					<td><code>[ch_pseo_location]</code></td>
+					<td><?php esc_html_e( 'Chennai', 'ch-pseo-pages-plugin' ); ?></td>
+				</tr>
+				<tr>
+					<td><?php esc_html_e( 'Full location', 'ch-pseo-pages-plugin' ); ?></td>
+					<td><code>{location_full}</code></td>
+					<td><code>[ch_pseo_location_full]</code></td>
+					<td><?php esc_html_e( 'Chennai, Tamil Nadu, India', 'ch-pseo-pages-plugin' ); ?></td>
+				</tr>
+				<tr>
+					<td><?php esc_html_e( 'Parent location', 'ch-pseo-pages-plugin' ); ?></td>
+					<td><code>{location_parent}</code></td>
+					<td><code>[ch_pseo_location_parent]</code></td>
+					<td><?php esc_html_e( 'Tamil Nadu', 'ch-pseo-pages-plugin' ); ?></td>
+				</tr>
+				<tr>
+					<td><?php esc_html_e( 'Location type', 'ch-pseo-pages-plugin' ); ?></td>
+					<td><code>{location_type}</code></td>
+					<td><code>[ch_pseo_location_type]</code></td>
+					<td><code>city</code></td>
+				</tr>
+			</tbody>
+		</table>
+
+		<h3><?php esc_html_e( 'Template components', 'ch-pseo-pages-plugin' ); ?></h3>
+		<ul class="ch-pseo-table-list">
+			<li><code>[ch_pseo_title]</code> — <?php esc_html_e( 'outputs the mapping H1 override, service H1 template, or automatic service/location heading.', 'ch-pseo-pages-plugin' ); ?></li>
+			<li><code>[ch_pseo_breadcrumbs]</code> — <?php esc_html_e( 'outputs the visible dynamic breadcrumb navigation.', 'ch-pseo-pages-plugin' ); ?></li>
+			<li><code>[ch_pseo_location_finder]</code> — <?php esc_html_e( 'outputs the service and location finder form.', 'ch-pseo-pages-plugin' ); ?></li>
+		</ul>
+
+		<p>
+			<strong><?php esc_html_e( 'Example meta title:', 'ch-pseo-pages-plugin' ); ?></strong>
+			<code>{service_name} Services in {location} | Expert Help</code>
+		</p>
+		<p>
+			<strong><?php esc_html_e( 'Example template content:', 'ch-pseo-pages-plugin' ); ?></strong>
+			<code><?php echo esc_html( 'Get professional [ch_pseo_service_name] help in [ch_pseo_city], [ch_pseo_state].' ); ?></code>
+		</p>
+		<p class="description">
+			<?php esc_html_e( 'Short forms such as [country] or [city] are not registered. Use the complete CH-PSEO shortcode names shown above.', 'ch-pseo-pages-plugin' ); ?>
+		</p>
+	</div>
+
+	<div class="ch-pseo-panel ch-pseo-settings-panel">
 		<h2><?php esc_html_e( 'Uninstall Behavior', 'ch-pseo-pages-plugin' ); ?></h2>
 		<form action="options.php" method="post">
 			<?php settings_fields( 'ch_pseo_tools' ); ?>
@@ -64,6 +163,84 @@ defined( 'ABSPATH' ) || exit;
 
 	<div class="ch-pseo-panel ch-pseo-settings-panel">
 		<h2><?php esc_html_e( 'Import Tools', 'ch-pseo-pages-plugin' ); ?></h2>
-		<p><?php esc_html_e( 'CSV import is intentionally deferred to a later development phase.', 'ch-pseo-pages-plugin' ); ?></p>
+		<p><?php esc_html_e( 'Imports are transactional: if any row is invalid, no rows from that file are saved. Existing rows with matching slugs are updated.', 'ch-pseo-pages-plugin' ); ?></p>
+
+		<?php if ( is_array( $import_result ) ) : ?>
+			<div class="notice notice-<?php echo empty( $import_result['errors'] ) ? 'success' : 'error'; ?> inline">
+				<p>
+					<?php
+					printf(
+						/* translators: 1: processed rows, 2: created rows, 3: updated rows. */
+						esc_html__( 'Processed: %1$d. Created: %2$d. Updated: %3$d.', 'ch-pseo-pages-plugin' ),
+						(int) $import_result['processed'],
+						(int) $import_result['created'],
+						(int) $import_result['updated']
+					);
+					if ( ! empty( $import_result['dry_run'] ) ) {
+						echo ' ' . esc_html__( 'Dry run only; no changes were saved.', 'ch-pseo-pages-plugin' );
+					}
+					?>
+				</p>
+				<?php if ( ! empty( $import_result['errors'] ) ) : ?>
+					<ul>
+						<?php foreach ( $import_result['errors'] as $import_error ) : ?>
+							<li><?php echo esc_html( $import_error ); ?></li>
+						<?php endforeach; ?>
+					</ul>
+				<?php endif; ?>
+			</div>
+		<?php endif; ?>
+
+		<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post" enctype="multipart/form-data">
+			<input type="hidden" name="action" value="ch_pseo_import_csv">
+			<?php wp_nonce_field( 'ch_pseo_import_csv' ); ?>
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row"><label for="ch-pseo-import-type"><?php esc_html_e( 'Import type', 'ch-pseo-pages-plugin' ); ?></label></th>
+					<td>
+						<select id="ch-pseo-import-type" name="import_type">
+							<option value="locations"><?php esc_html_e( 'Locations', 'ch-pseo-pages-plugin' ); ?></option>
+							<option value="mappings"><?php esc_html_e( 'Service/location mappings', 'ch-pseo-pages-plugin' ); ?></option>
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="ch-pseo-csv-file"><?php esc_html_e( 'CSV file', 'ch-pseo-pages-plugin' ); ?></label></th>
+					<td><input id="ch-pseo-csv-file" name="csv_file" type="file" accept=".csv,text/csv" required></td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Validation', 'ch-pseo-pages-plugin' ); ?></th>
+					<td><label><input name="dry_run" type="checkbox" value="1"> <?php esc_html_e( 'Dry run: validate and report without saving', 'ch-pseo-pages-plugin' ); ?></label></td>
+				</tr>
+			</table>
+			<?php submit_button( __( 'Import CSV', 'ch-pseo-pages-plugin' ), 'primary' ); ?>
+		</form>
+
+		<p>
+			<?php
+			$location_template_url = wp_nonce_url(
+				add_query_arg(
+					array(
+						'action' => 'ch_pseo_download_csv_template',
+						'import_type' => 'locations',
+					),
+					admin_url( 'admin-post.php' )
+				),
+				'ch_pseo_download_csv_template_locations'
+			);
+			$mapping_template_url  = wp_nonce_url(
+				add_query_arg(
+					array(
+						'action' => 'ch_pseo_download_csv_template',
+						'import_type' => 'mappings',
+					),
+					admin_url( 'admin-post.php' )
+				),
+				'ch_pseo_download_csv_template_mappings'
+			);
+			?>
+			<a class="button" href="<?php echo esc_url( $location_template_url ); ?>"><?php esc_html_e( 'Download Location Template', 'ch-pseo-pages-plugin' ); ?></a>
+			<a class="button" href="<?php echo esc_url( $mapping_template_url ); ?>"><?php esc_html_e( 'Download Mapping Template', 'ch-pseo-pages-plugin' ); ?></a>
+		</p>
 	</div>
 </div>

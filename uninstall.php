@@ -29,4 +29,9 @@ foreach ( $tables as $table ) {
 }
 
 delete_option( 'ch_pseo_version' );
+delete_option( 'ch_pseo_db_version' );
+delete_option( 'ch_pseo_db_migration_lock' );
+delete_option( 'ch_pseo_sitemap_cache_version' );
 delete_option( 'ch_pseo_remove_data_on_uninstall' );
+delete_transient( 'ch_pseo_rewrite_definitions_v1' );
+delete_transient( 'ch_pseo_sitemap_xml_v1' );
