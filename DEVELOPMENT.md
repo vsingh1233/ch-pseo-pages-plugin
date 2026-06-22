@@ -136,6 +136,11 @@ service slug is always included in generated routes. For example, a prefix of
 GitHub Actions runs `composer check` on PHP 7.4, 8.1, and 8.3 for every push and
 pull request.
 
+Sitemap URL and index `lastmod` values use the newest timestamp from the
+mapping, service configuration, or reusable WordPress template page. They must
+not be replaced with the current request time because `lastmod` should represent
+a meaningful content change.
+
 ## CSV imports
 
 CSV imports are transactional and all-or-nothing. The Tools screen provides the

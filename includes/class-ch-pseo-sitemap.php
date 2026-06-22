@@ -125,10 +125,39 @@ class CH_PSEO_Sitemap {
 			return $sitemap_index;
 		}
 
+		$last_modified  = $this->get_sitemap_last_modified();
 		$sitemap_index .= "\n<sitemap>\n";
 		$sitemap_index .= "\t<loc>" . esc_xml( $this->get_sitemap_url() ) . "</loc>\n";
+		if ( $last_modified ) {
+			$sitemap_index .= "\t<lastmod>" . esc_xml( $last_modified ) . "</lastmod>\n";
+		}
 		$sitemap_index .= "</sitemap>\n";
 		return $sitemap_index;
+	}
+
+	/**
+	 * Gets the newest effective modification date for eligible PSEO URLs.
+	 *
+	 * A generated page changes when its mapping, service configuration, or
+	 * reusable WordPress template changes.
+	 *
+	 * @return string ISO 8601 date or an empty string.
+	 */
+	public function get_sitemap_last_modified() {
+		global $wpdb;
+
+		$query  = $this->get_eligible_query(
+			"GREATEST(
+				COALESCE(sl.updated_at, '1970-01-01 00:00:00'),
+				COALESCE(s.updated_at, '1970-01-01 00:00:00'),
+				COALESCE(p.post_modified_gmt, '1970-01-01 00:00:00')
+			) AS effective_updated_at"
+		) . ' ORDER BY effective_updated_at DESC LIMIT 1';
+		$date   = $wpdb->get_var(
+			$wpdb->prepare( $query, $this->get_eligible_query_parameters() )
+		); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		return $this->format_last_modified( $date );
 	}
 
 	/**
@@ -231,7 +260,7 @@ class CH_PSEO_Sitemap {
 			$urls[] = array(
 				'service_location_id' => (int) $row['service_location_id'],
 				'url'                 => ch_pseo_get_generated_url( $row['url_base'], $row['service_slug'], $segments ),
-				'lastmod'             => $this->format_last_modified( $row['mapping_updated_at'] ),
+				'lastmod'             => $this->format_last_modified( $row['effective_updated_at'] ),
 				'service_name'        => $row['service_name'],
 				'service_slug'        => $row['service_slug'],
 				'location_structure'  => $row['location_structure'],
@@ -273,6 +302,10 @@ class CH_PSEO_Sitemap {
 	public static function clear_cache() {
 		delete_transient( self::CACHE_KEY );
 		update_option( self::CACHE_VERSION_OPTION, (int) get_option( self::CACHE_VERSION_OPTION, 1 ) + 1, false );
+
+		if ( class_exists( 'WPSEO_Sitemaps_Cache' ) ) {
+			WPSEO_Sitemaps_Cache::clear();
+		}
 	}
 
 	/**
@@ -322,13 +355,18 @@ class CH_PSEO_Sitemap {
 	 */
 	private function get_eligible_rows( $limit, $offset ) {
 		global $wpdb;
-		$fields = 'sl.id AS service_location_id, sl.updated_at AS mapping_updated_at,
+		$fields = "sl.id AS service_location_id,
+			GREATEST(
+				COALESCE(sl.updated_at, '1970-01-01 00:00:00'),
+				COALESCE(s.updated_at, '1970-01-01 00:00:00'),
+				COALESCE(p.post_modified_gmt, '1970-01-01 00:00:00')
+			) AS effective_updated_at,
 			s.service_name, s.service_slug, s.url_base, s.location_structure,
-			COALESCE(NULLIF(sl.robots, \'\'), s.robots_default) AS effective_robots,
+			COALESCE(NULLIF(sl.robots, ''), s.robots_default) AS effective_robots,
 			sl.country_id, sl.state_id, sl.city_id,
 			co.name AS country_name, co.slug AS country_slug,
 			st.name AS state_name, st.slug AS state_slug,
-			ci.name AS city_name, ci.slug AS city_slug';
+			ci.name AS city_name, ci.slug AS city_slug";
 		$query  = $this->get_eligible_query( $fields ) . ' ORDER BY sl.id ASC';
 		if ( $limit ) {
 			$query .= ' LIMIT ' . absint( $limit ) . ' OFFSET ' . absint( $offset );

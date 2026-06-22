@@ -171,3 +171,5 @@ transactional location and mapping imports, and generated-URL export.
 * Made the base prefix optional and included the service slug in every generated URL.
 * Normalized Yoast page schema and linked breadcrumbs for each generated URL.
 * Added a Tools-screen reference for configuration tokens and template shortcodes.
+* Added import-format examples and editable CSV exports for locations and mappings.
+* Added effective last-modified dates to PSEO sitemap URLs and the Yoast sitemap index.

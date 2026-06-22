@@ -70,6 +70,7 @@ class CH_PSEO_CSV_Import_Smoke_Test {
 			$this->create_service();
 			$this->test_location_import();
 			$this->test_mapping_import();
+			$this->test_export_rows();
 		} catch ( Throwable $throwable ) {
 			$error = $throwable;
 		} finally {
@@ -199,6 +200,41 @@ class CH_PSEO_CSV_Import_Smoke_Test {
 		$this->assert( 'noindex_follow' === $mapping['robots'], 'Mapping robots override was not imported.' );
 		$this->assert( 0 === (int) $mapping['sitemap_include'], 'Mapping sitemap override was not imported.' );
 		$this->assert( 'CSV Custom H1' === $mapping['custom_h1'], 'Mapping custom H1 was not imported.' );
+	}
+
+	/**
+	 * Verifies exports use import-compatible rows and preserve overrides.
+	 *
+	 * @throws RuntimeException When an assertion fails.
+	 * @return void
+	 */
+	private function test_export_rows() {
+		$locations = array_values(
+			array_filter(
+				$this->importer->export_rows( 'locations' ),
+				static function ( $row ) {
+					return 'csv-city' === $row['city_slug'];
+				}
+			)
+		);
+		$this->assert( 1 === count( $locations ), 'Location export did not include the imported city.' );
+		$this->assert( 'csv-land' === $locations[0]['country_slug'], 'Location export lost the country hierarchy.' );
+		$this->assert( 'csv-state' === $locations[0]['state_slug'], 'Location export lost the state hierarchy.' );
+		$this->assert( 'inactive' === $locations[0]['status'], 'Location export did not preserve city status.' );
+
+		$mappings = array_values(
+			array_filter(
+				$this->importer->export_rows( 'mappings' ),
+				static function ( $row ) {
+					return 'csv-test-service' === $row['service_slug'];
+				}
+			)
+		);
+		$this->assert( 1 === count( $mappings ), 'Mapping export did not include the imported mapping.' );
+		$this->assert( 'csv-city' === $mappings[0]['city_slug'], 'Mapping export lost the location slug.' );
+		$this->assert( 'noindex_follow' === $mappings[0]['robots'], 'Mapping export lost the robots override.' );
+		$this->assert( '0' === (string) $mappings[0]['sitemap_include'], 'Mapping export lost the sitemap override.' );
+		$this->assert( 'CSV Meta Title' === $mappings[0]['custom_meta_title'], 'Mapping export lost custom metadata.' );
 	}
 
 	/**

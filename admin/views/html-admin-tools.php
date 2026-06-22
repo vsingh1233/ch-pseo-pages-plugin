@@ -242,5 +242,56 @@ defined( 'ABSPATH' ) || exit;
 			<a class="button" href="<?php echo esc_url( $location_template_url ); ?>"><?php esc_html_e( 'Download Location Template', 'ch-pseo-pages-plugin' ); ?></a>
 			<a class="button" href="<?php echo esc_url( $mapping_template_url ); ?>"><?php esc_html_e( 'Download Mapping Template', 'ch-pseo-pages-plugin' ); ?></a>
 		</p>
+
+		<?php
+		$location_export_url = wp_nonce_url(
+			add_query_arg(
+				array(
+					'action'      => 'ch_pseo_export_data_csv',
+					'export_type' => 'locations',
+				),
+				admin_url( 'admin-post.php' )
+			),
+			'ch_pseo_export_data_csv_locations'
+		);
+		$mapping_export_url  = wp_nonce_url(
+			add_query_arg(
+				array(
+					'action'      => 'ch_pseo_export_data_csv',
+					'export_type' => 'mappings',
+				),
+				admin_url( 'admin-post.php' )
+			),
+			'ch_pseo_export_data_csv_mappings'
+		);
+		?>
+
+		<h3><?php esc_html_e( 'Export Editable Data', 'ch-pseo-pages-plugin' ); ?></h3>
+		<p><?php esc_html_e( 'These exports use the exact import headers. You can keep them as backups, edit them in a spreadsheet, and import them again.', 'ch-pseo-pages-plugin' ); ?></p>
+		<p>
+			<a class="button" href="<?php echo esc_url( $location_export_url ); ?>"><?php esc_html_e( 'Export Locations CSV', 'ch-pseo-pages-plugin' ); ?></a>
+			<a class="button" href="<?php echo esc_url( $mapping_export_url ); ?>"><?php esc_html_e( 'Export Mappings CSV', 'ch-pseo-pages-plugin' ); ?></a>
+		</p>
+
+		<h3><?php esc_html_e( 'Location CSV Format', 'ch-pseo-pages-plugin' ); ?></h3>
+		<p><?php esc_html_e( 'Use one row for a country, country/state, or country/state/city hierarchy. Slugs may be blank and will be generated from names. A city requires a state.', 'ch-pseo-pages-plugin' ); ?></p>
+		<div class="ch-pseo-code-scroll">
+			<code>country_name,country_slug,state_name,state_slug,city_name,city_slug,status</code><br>
+			<code>India,india,Tamil Nadu,tamil-nadu,Chennai,chennai,active</code><br>
+			<code>India,india,Karnataka,karnataka,,,active</code>
+		</div>
+		<p class="description"><?php esc_html_e( 'Status must be active or inactive. Exported files include hierarchy rows in a safe order so re-importing preserves country, state, and city statuses.', 'ch-pseo-pages-plugin' ); ?></p>
+
+		<h3><?php esc_html_e( 'Mapping CSV Format', 'ch-pseo-pages-plugin' ); ?></h3>
+		<p><?php esc_html_e( 'The service and locations must already exist. Location columns must match the service location structure. Existing matching mappings are updated.', 'ch-pseo-pages-plugin' ); ?></p>
+		<div class="ch-pseo-code-scroll">
+			<code>service_slug,country_slug,state_slug,city_slug,status,robots,sitemap_include,custom_h1,custom_meta_title,custom_meta_description,custom_schema_type,canonical_override</code><br>
+			<code>assignment-writing,india,tamil-nadu,chennai,active,index_follow,1,Assignment Writing in Chennai,Assignment Writing Services in Chennai,Get expert assignment help in Chennai,Service,</code>
+		</div>
+		<ul class="ch-pseo-table-list">
+			<li><strong><?php esc_html_e( 'robots:', 'ch-pseo-pages-plugin' ); ?></strong> <code>index_follow</code>, <code>index_nofollow</code>, <code>noindex_follow</code>, <code>noindex_nofollow</code>, <?php esc_html_e( 'or blank to inherit the service default.', 'ch-pseo-pages-plugin' ); ?></li>
+			<li><strong><?php esc_html_e( 'sitemap_include:', 'ch-pseo-pages-plugin' ); ?></strong> <code>1</code>, <code>0</code>, <?php esc_html_e( 'or blank to inherit the service default.', 'ch-pseo-pages-plugin' ); ?></li>
+			<li><?php esc_html_e( 'Custom content, metadata, schema type, and canonical columns may be left blank.', 'ch-pseo-pages-plugin' ); ?></li>
+		</ul>
 	</div>
 </div>
