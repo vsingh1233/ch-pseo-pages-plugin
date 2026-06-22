@@ -59,6 +59,7 @@ class CH_PSEO_Admin {
 		add_action( 'admin_post_ch_pseo_clear_location_cache', array( $this, 'handle_clear_location_cache' ) );
 		add_action( 'admin_post_ch_pseo_clear_sitemap_cache', array( $this, 'handle_clear_sitemap_cache' ) );
 		add_action( 'admin_post_ch_pseo_export_urls_csv', array( $this, 'handle_export_urls_csv' ) );
+		add_action( 'admin_post_ch_pseo_export_data_csv', array( $this, 'handle_export_data_csv' ) );
 		add_action( 'admin_post_ch_pseo_import_csv', array( $this, 'handle_import_csv' ) );
 		add_action( 'admin_post_ch_pseo_download_csv_template', array( $this, 'handle_download_csv_template' ) );
 		add_action( 'admin_post_ch_pseo_bulk_locations', array( $this, 'handle_bulk_locations' ) );
@@ -1122,6 +1123,49 @@ class CH_PSEO_Admin {
 					$item['lastmod'],
 				)
 			);
+		}
+
+		fclose( $output );
+		exit;
+	}
+
+	/**
+	 * Exports locations or mappings in the same format accepted by imports.
+	 *
+	 * @return void
+	 */
+	public function handle_export_data_csv() {
+		$type = isset( $_GET['export_type'] ) ? sanitize_key( wp_unslash( $_GET['export_type'] ) ) : '';
+		$this->authorize_action( 'ch_pseo_export_data_csv_' . $type );
+
+		if ( ! in_array( $type, array( 'locations', 'mappings' ), true ) ) {
+			wp_die( esc_html__( 'Invalid CSV export type.', 'ch-pseo-pages-plugin' ) );
+		}
+
+		$importer = new CH_PSEO_Importer( $this->database );
+		$headers  = 'locations' === $type ? $importer->location_headers() : $importer->mapping_headers();
+		$rows     = $importer->export_rows( $type );
+
+		while ( ob_get_level() ) {
+			ob_end_clean();
+		}
+
+		nocache_headers();
+		header( 'Content-Type: text/csv; charset=UTF-8' );
+		header( 'Content-Disposition: attachment; filename=ch-pseo-' . $type . '-export-' . gmdate( 'Y-m-d' ) . '.csv' );
+
+		$output = fopen( 'php://output', 'w' );
+		if ( false === $output ) {
+			wp_die( esc_html__( 'Unable to create the CSV export.', 'ch-pseo-pages-plugin' ) );
+		}
+
+		fputcsv( $output, $headers );
+		foreach ( $rows as $row ) {
+			$values = array();
+			foreach ( $headers as $header ) {
+				$values[] = isset( $row[ $header ] ) ? $row[ $header ] : '';
+			}
+			fputcsv( $output, $values );
 		}
 
 		fclose( $output );

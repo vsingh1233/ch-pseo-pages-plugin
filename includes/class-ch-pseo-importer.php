@@ -115,6 +115,103 @@ class CH_PSEO_Importer {
 	}
 
 	/**
+	 * Gets import-compatible rows for a CSV backup/export.
+	 *
+	 * @param string $type Export type: locations or mappings.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public function export_rows( $type ) {
+		return 'locations' === $type
+			? $this->get_location_export_rows()
+			: $this->get_mapping_export_rows();
+	}
+
+	/**
+	 * Gets location rows in an order that preserves parent statuses on import.
+	 *
+	 * City rows are followed by state rows and then country rows. Because the
+	 * importer upserts every hierarchy level supplied in a row, this ordering
+	 * ensures each parent entity's own row is the final status written to it.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function get_location_export_rows() {
+		global $wpdb;
+
+		$tables = $this->database->get_table_names();
+		$rows   = $wpdb->get_results(
+			"SELECT
+				co.name AS country_name, co.slug AS country_slug,
+				st.name AS state_name, st.slug AS state_slug,
+				ci.name AS city_name, ci.slug AS city_slug,
+				ci.status
+			FROM {$tables['cities']} ci
+			LEFT JOIN {$tables['states']} st ON st.id = ci.state_id
+			LEFT JOIN {$tables['countries']} co ON co.id = COALESCE(NULLIF(ci.country_id, 0), st.country_id)
+			ORDER BY co.name, st.name, ci.name",
+			ARRAY_A
+		); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		$state_rows = $wpdb->get_results(
+			"SELECT
+				co.name AS country_name, co.slug AS country_slug,
+				st.name AS state_name, st.slug AS state_slug,
+				'' AS city_name, '' AS city_slug,
+				st.status
+			FROM {$tables['states']} st
+			LEFT JOIN {$tables['countries']} co ON co.id = st.country_id
+			ORDER BY co.name, st.name",
+			ARRAY_A
+		); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		$country_rows = $wpdb->get_results(
+			"SELECT
+				co.name AS country_name, co.slug AS country_slug,
+				'' AS state_name, '' AS state_slug,
+				'' AS city_name, '' AS city_slug,
+				co.status
+			FROM {$tables['countries']} co
+			ORDER BY co.name",
+			ARRAY_A
+		); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		return array_merge( $rows, $state_rows, $country_rows );
+	}
+
+	/**
+	 * Gets service/location mapping rows accepted by the mapping importer.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function get_mapping_export_rows() {
+		global $wpdb;
+
+		$tables = $this->database->get_table_names();
+		return $wpdb->get_results(
+			"SELECT
+				s.service_slug,
+				COALESCE(co.slug, '') AS country_slug,
+				COALESCE(st.slug, '') AS state_slug,
+				COALESCE(ci.slug, '') AS city_slug,
+				sl.status,
+				COALESCE(sl.robots, '') AS robots,
+				COALESCE(sl.sitemap_include, '') AS sitemap_include,
+				COALESCE(sl.custom_h1, '') AS custom_h1,
+				COALESCE(sl.custom_meta_title, '') AS custom_meta_title,
+				COALESCE(sl.custom_meta_description, '') AS custom_meta_description,
+				COALESCE(sl.custom_schema_type, '') AS custom_schema_type,
+				COALESCE(sl.canonical_override, '') AS canonical_override
+			FROM {$tables['service_locations']} sl
+			INNER JOIN {$tables['services']} s ON s.id = sl.service_id
+			LEFT JOIN {$tables['countries']} co ON co.id = sl.country_id
+			LEFT JOIN {$tables['states']} st ON st.id = sl.state_id
+			LEFT JOIN {$tables['cities']} ci ON ci.id = sl.city_id
+			ORDER BY s.service_slug, co.slug, st.slug, ci.slug",
+			ARRAY_A
+		); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	}
+
+	/**
 	 * Reads and validates CSV headers.
 	 *
 	 * @param string   $path             CSV file path.

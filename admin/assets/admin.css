@@ -63,6 +63,19 @@
 	line-height: 1.8;
 }
 
+.ch-pseo-code-scroll {
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	overflow-x: auto;
+	padding: 12px;
+	white-space: nowrap;
+}
+
+.ch-pseo-code-scroll code {
+	background: transparent;
+	padding: 0;
+}
+
 .ch-pseo-admin textarea {
 	resize: vertical;
 }
@@ -79,4 +92,3 @@
 		grid-template-columns: 1fr;
 	}
 }
-
