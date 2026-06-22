@@ -213,11 +213,11 @@ class CH_PSEO_Shortcodes {
 
 		$this->enqueue_public_style();
 
-		$service = $this->context->get_service();
-		$country = $this->context->get( 'country', array() );
-		$state   = $this->context->get( 'state', array() );
-		$city    = $this->context->get( 'city', array() );
-		$base    = trim( $service['url_base'], '/' );
+		$service             = $this->context->get_service();
+		$country             = $this->context->get( 'country', array() );
+		$state               = $this->context->get( 'state', array() );
+		$city                = $this->context->get( 'city', array() );
+		$base                = ch_pseo_get_service_route( $service['url_base'], $service['service_slug'] );
 		$structure_locations = array(
 			'country'            => array( $country ),
 			'country_state'      => array( $country, $state ),
@@ -225,7 +225,7 @@ class CH_PSEO_Shortcodes {
 			'state'              => array( $state ),
 			'state_city'         => array( $state, $city ),
 		);
-		$items   = array(
+		$items               = array(
 			array(
 				'label' => __( 'Home', 'ch-pseo-pages-plugin' ),
 				'url'   => home_url( '/' ),
@@ -235,7 +235,7 @@ class CH_PSEO_Shortcodes {
 				'url'   => home_url( user_trailingslashit( $base ) ),
 			),
 		);
-		$path = $base;
+		$path                = $base;
 
 		$locations = isset( $structure_locations[ $service['location_structure'] ] )
 			? $structure_locations[ $service['location_structure'] ]
@@ -253,9 +253,9 @@ class CH_PSEO_Shortcodes {
 			);
 		}
 
-		$output = '<nav class="ch-pseo-breadcrumbs" aria-label="' . esc_attr__( 'Breadcrumbs', 'ch-pseo-pages-plugin' ) . '">';
+		$output  = '<nav class="ch-pseo-breadcrumbs" aria-label="' . esc_attr__( 'Breadcrumbs', 'ch-pseo-pages-plugin' ) . '">';
 		$output .= '<ol itemscope itemtype="https://schema.org/BreadcrumbList">';
-		$last   = count( $items ) - 1;
+		$last    = count( $items ) - 1;
 
 		foreach ( $items as $index => $item ) {
 			$output .= '<li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">';
@@ -266,7 +266,7 @@ class CH_PSEO_Shortcodes {
 				$output .= '<span itemprop="name">' . esc_html( $item['label'] ) . '</span>';
 				$output .= '</a>';
 			}
-			$output .= '<meta itemprop="position" content="' . esc_attr( $index + 1 ) . '">';
+			$output .= '<meta itemprop="position" content="' . esc_attr( (string) ( $index + 1 ) ) . '">';
 			$output .= '</li>';
 		}
 
@@ -314,7 +314,12 @@ class CH_PSEO_Shortcodes {
 				<div class="ch-pseo-finder-field" data-ch-pseo-finder-field="<?php echo esc_attr( $type ); ?>" hidden>
 					<label for="<?php echo esc_attr( $instance_id . '-' . $type ); ?>"><?php echo esc_html( ucfirst( $type ) ); ?></label>
 					<select id="<?php echo esc_attr( $instance_id . '-' . $type ); ?>" data-ch-pseo-finder="<?php echo esc_attr( $type ); ?>">
-						<option value=""><?php echo esc_html( sprintf( __( 'Select %s', 'ch-pseo-pages-plugin' ), $type ) ); ?></option>
+						<option value="">
+							<?php
+							/* translators: %s: location type, such as country, state, or city. */
+							echo esc_html( sprintf( __( 'Select %s', 'ch-pseo-pages-plugin' ), $type ) );
+							?>
+						</option>
 					</select>
 				</div>
 			<?php endforeach; ?>
@@ -373,6 +378,7 @@ class CH_PSEO_Shortcodes {
 					sl.id AS mapping_id,
 					s.id AS service_id,
 					s.service_name,
+					s.service_slug,
 					s.url_base,
 					s.location_structure,
 					sl.country_id AS mapped_country_id,
@@ -426,7 +432,7 @@ class CH_PSEO_Shortcodes {
 
 			$tree['services'][ $service_id ]['mappings'][] = array(
 				'id'      => (int) $row['mapping_id'],
-				'url'     => home_url( user_trailingslashit( trim( $row['url_base'], '/' ) . '/' . implode( '/', $segments ) ) ),
+				'url'     => ch_pseo_get_generated_url( $row['url_base'], $row['service_slug'], $segments ),
 				'country' => 0 === strpos( $row['location_structure'], 'country' )
 					? $this->location_tree_item( $row['country_id'], $row['country_name'] )
 					: null,

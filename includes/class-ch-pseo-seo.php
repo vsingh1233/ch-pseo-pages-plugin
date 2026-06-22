@@ -1,6 +1,6 @@
 <?php
 /**
- * SEO and Yoast SEO integration.
+ * Dynamic SEO metadata and Yoast SEO integration.
  *
  * @package CH_PSEO
  */
@@ -8,7 +8,7 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Supplies dynamic Yoast metadata and schema for valid PSEO requests.
+ * Builds PSEO metadata and supplies Yoast or standalone output.
  */
 class CH_PSEO_SEO {
 
@@ -52,10 +52,7 @@ class CH_PSEO_SEO {
 	}
 
 	/**
-	 * Registers Yoast filters.
-	 *
-	 * Registering these filters is safe when Yoast is inactive because WordPress
-	 * simply never applies them.
+	 * Registers Yoast and standalone metadata hooks.
 	 *
 	 * @return void
 	 */
@@ -64,7 +61,11 @@ class CH_PSEO_SEO {
 		add_filter( 'wpseo_metadesc', array( $this, 'filter_meta_description' ) );
 		add_filter( 'wpseo_canonical', array( $this, 'filter_canonical' ) );
 		add_filter( 'wpseo_robots', array( $this, 'filter_robots' ) );
-		add_filter( 'wpseo_schema_graph', array( $this, 'filter_schema_graph' ), 20, 2 );
+
+		add_filter( 'pre_get_document_title', array( $this, 'filter_document_title' ), 20 );
+		add_filter( 'wp_robots', array( $this, 'filter_wordpress_robots' ), 20 );
+		add_action( 'template_redirect', array( $this, 'disable_core_canonical' ), 1 );
+		add_action( 'wp_head', array( $this, 'render_standalone_meta' ), 1 );
 	}
 
 	/**
@@ -74,10 +75,109 @@ class CH_PSEO_SEO {
 	 * @return string
 	 */
 	public function filter_title( $title ) {
-		if ( ! $this->should_filter_yoast() ) {
-			return $title;
+		return $this->should_filter_yoast() ? $this->get_title() : $title;
+	}
+
+	/**
+	 * Filters the Yoast meta description for a valid PSEO request.
+	 *
+	 * @param string $description Existing description.
+	 * @return string
+	 */
+	public function filter_meta_description( $description ) {
+		return $this->should_filter_yoast() ? $this->get_meta_description() : $description;
+	}
+
+	/**
+	 * Filters the Yoast canonical URL.
+	 *
+	 * @param string|false $canonical Existing canonical URL.
+	 * @return string|false
+	 */
+	public function filter_canonical( $canonical ) {
+		return $this->should_filter_yoast() ? $this->get_canonical_url() : $canonical;
+	}
+
+	/**
+	 * Filters the Yoast robots directive.
+	 *
+	 * @param string $robots Existing robots directive.
+	 * @return string
+	 */
+	public function filter_robots( $robots ) {
+		return $this->should_filter_yoast() ? $this->get_robots_directive() : $robots;
+	}
+
+	/**
+	 * Supplies a standalone WordPress document title when Yoast is unavailable.
+	 *
+	 * @param string $title Existing document title.
+	 * @return string
+	 */
+	public function filter_document_title( $title ) {
+		return $this->should_render_standalone() ? $this->get_title() : $title;
+	}
+
+	/**
+	 * Supplies standalone WordPress robots directives when Yoast is unavailable.
+	 *
+	 * @param array<string, bool|string> $robots Existing robots directives.
+	 * @return array<string, bool|string>
+	 */
+	public function filter_wordpress_robots( $robots ) {
+		if ( ! $this->should_render_standalone() ) {
+			return $robots;
 		}
 
+		unset( $robots['index'], $robots['noindex'], $robots['follow'], $robots['nofollow'] );
+
+		foreach ( explode( ',', $this->get_robots_directive() ) as $directive ) {
+			$directive            = trim( $directive );
+			$robots[ $directive ] = true;
+		}
+
+		return $robots;
+	}
+
+	/**
+	 * Removes WordPress's template-page canonical before standalone output.
+	 *
+	 * @return void
+	 */
+	public function disable_core_canonical() {
+		if ( $this->should_render_standalone() ) {
+			remove_action( 'wp_head', 'rel_canonical' );
+		}
+	}
+
+	/**
+	 * Outputs standalone description and canonical tags when Yoast is unavailable.
+	 *
+	 * @return void
+	 */
+	public function render_standalone_meta() {
+		if ( ! $this->should_render_standalone() ) {
+			return;
+		}
+
+		$description = $this->get_meta_description();
+		$canonical   = $this->get_canonical_url();
+
+		if ( $description ) {
+			echo '<meta name="description" content="' . esc_attr( $description ) . '">' . "\n";
+		}
+
+		if ( $canonical ) {
+			echo '<link rel="canonical" href="' . esc_url( $canonical ) . '">' . "\n";
+		}
+	}
+
+	/**
+	 * Gets the resolved metadata title.
+	 *
+	 * @return string
+	 */
+	public function get_title() {
 		$mapping  = $this->context->get_service_location();
 		$service  = $this->context->get_service();
 		$template = $this->first_non_empty(
@@ -108,16 +208,11 @@ class CH_PSEO_SEO {
 	}
 
 	/**
-	 * Filters the Yoast meta description for a valid PSEO request.
+	 * Gets the resolved metadata description.
 	 *
-	 * @param string $description Existing description.
 	 * @return string
 	 */
-	public function filter_meta_description( $description ) {
-		if ( ! $this->should_filter_yoast() ) {
-			return $description;
-		}
-
+	public function get_meta_description() {
 		$mapping  = $this->context->get_service_location();
 		$service  = $this->context->get_service();
 		$template = $this->first_non_empty(
@@ -143,119 +238,58 @@ class CH_PSEO_SEO {
 	}
 
 	/**
-	 * Filters the Yoast canonical URL.
+	 * Gets the resolved canonical URL.
 	 *
-	 * @param string|false $canonical Existing canonical URL.
-	 * @return string|false
+	 * @return string
 	 */
-	public function filter_canonical( $canonical ) {
-		if ( ! $this->should_filter_yoast() ) {
-			return $canonical;
-		}
-
-		$url = $this->context->get( 'canonical_url' );
-		return $url ? esc_url_raw( $url ) : $canonical;
+	public function get_canonical_url() {
+		return esc_url_raw( $this->context->get( 'canonical_url' ) );
 	}
 
 	/**
-	 * Filters the Yoast robots directive.
+	 * Gets the resolved robots directive.
 	 *
-	 * @param string $robots Existing robots directive.
 	 * @return string
 	 */
-	public function filter_robots( $robots ) {
-		if ( ! $this->should_filter_yoast() ) {
-			return $robots;
-		}
-
+	public function get_robots_directive() {
 		$directives = array(
 			'index_follow'     => 'index, follow',
 			'noindex_follow'   => 'noindex, follow',
 			'noindex_nofollow' => 'noindex, nofollow',
 			'index_nofollow'   => 'index, nofollow',
 		);
-		$value = $this->context->get( 'robots', 'index_follow' );
+		$value      = $this->context->get( 'robots', 'index_follow' );
 
-		return isset( $directives[ $value ] ) ? $directives[ $value ] : $robots;
+		return isset( $directives[ $value ] ) ? $directives[ $value ] : 'index, follow';
 	}
 
 	/**
-	 * Adds a basic, filterable schema piece to Yoast's graph.
-	 *
-	 * @param array $graph   Existing schema graph.
-	 * @param mixed $context Yoast schema context.
-	 * @return array
-	 */
-	public function filter_schema_graph( $graph, $context = null ) {
-		if (
-			! $this->should_filter_yoast()
-			|| '1' !== (string) $this->get_setting( 'schema_enabled', '1' )
-			|| ! is_array( $graph )
-		) {
-			return $graph;
-		}
-
-		$allowed_types = array( 'Service', 'ProfessionalService', 'LegalService', 'Organization', 'WebPage' );
-		$schema_type   = $this->context->get( 'schema_type' );
-
-		if ( ! in_array( $schema_type, $allowed_types, true ) ) {
-			$schema_type = $this->get_setting( 'schema_default_type', 'Service' );
-		}
-		if ( ! in_array( $schema_type, $allowed_types, true ) ) {
-			$schema_type = 'Service';
-		}
-
-		if ( 'Organization' === $schema_type && $this->graph_contains_type( $graph, 'Organization' ) ) {
-			return $graph;
-		}
-
-		$canonical  = $this->context->get( 'canonical_url' );
-		$title      = $this->filter_title( '' );
-		$description = $this->filter_meta_description( '' );
-		$piece      = array(
-			'@type'       => $schema_type,
-			'@id'         => trailingslashit( $canonical ) . '#ch-pseo-' . strtolower( $schema_type ),
-			'url'         => $canonical,
-			'name'        => $title,
-			'description' => $description,
-		);
-
-		if ( in_array( $schema_type, array( 'Service', 'ProfessionalService', 'LegalService' ), true ) ) {
-			$piece['areaServed'] = array(
-				'@type' => $this->schema_place_type(),
-				'name'  => $this->context->get( 'location_full' ),
-			);
-
-			$organization_id = $this->find_graph_id_by_type( $graph, 'Organization' );
-			if ( $organization_id ) {
-				$piece['provider'] = array( '@id' => $organization_id );
-			}
-		}
-
-		if ( 'Organization' === $schema_type ) {
-			$piece['name'] = $this->get_setting( 'schema_organization_name', get_bloginfo( 'name' ) );
-		}
-
-		if ( 'WebPage' === $schema_type ) {
-			$piece['isPartOf'] = array( '@id' => home_url( '/#website' ) );
-		}
-
-		$piece = apply_filters( 'ch_pseo_schema_piece', $piece, $schema_type, $this->context->get_all(), $context );
-		if ( is_array( $piece ) && ! empty( $piece ) ) {
-			$graph[] = $piece;
-		}
-
-		return apply_filters( 'ch_pseo_schema_graph', $graph, $piece, $this->context->get_all(), $context );
-	}
-
-	/**
-	 * Determines whether dynamic Yoast output should be applied.
+	 * Determines whether Yoast should receive dynamic values.
 	 *
 	 * @return bool
 	 */
-	private function should_filter_yoast() {
+	public function should_filter_yoast() {
 		return $this->context->is_pseo_request()
+			&& $this->is_yoast_available()
 			&& '1' === (string) $this->get_setting( 'seo_enable_yoast', '1' );
+	}
+
+	/**
+	 * Determines whether the plugin should output standalone metadata.
+	 *
+	 * @return bool
+	 */
+	public function should_render_standalone() {
+		return $this->context->is_pseo_request() && ! $this->is_yoast_available();
+	}
+
+	/**
+	 * Determines whether Yoast SEO is loaded.
+	 *
+	 * @return bool
+	 */
+	public function is_yoast_available() {
+		return defined( 'WPSEO_VERSION' );
 	}
 
 	/**
@@ -320,58 +354,5 @@ class CH_PSEO_SEO {
 		$this->settings[ $key ] = null === $value ? $default : $value;
 
 		return $this->settings[ $key ];
-	}
-
-	/**
-	 * Checks whether the graph already contains a schema type.
-	 *
-	 * @param array  $graph Schema graph.
-	 * @param string $type  Schema type.
-	 * @return bool
-	 */
-	private function graph_contains_type( $graph, $type ) {
-		return (bool) $this->find_graph_id_by_type( $graph, $type, true );
-	}
-
-	/**
-	 * Finds a graph piece ID by schema type.
-	 *
-	 * @param array  $graph            Schema graph.
-	 * @param string $type             Schema type.
-	 * @param bool   $return_boolean_id Return a truthy placeholder without an ID.
-	 * @return string|false
-	 */
-	private function find_graph_id_by_type( $graph, $type, $return_boolean_id = false ) {
-		foreach ( $graph as $piece ) {
-			if ( ! is_array( $piece ) || empty( $piece['@type'] ) ) {
-				continue;
-			}
-
-			$types = is_array( $piece['@type'] ) ? $piece['@type'] : array( $piece['@type'] );
-			if ( in_array( $type, $types, true ) ) {
-				if ( ! empty( $piece['@id'] ) ) {
-					return $piece['@id'];
-				}
-				return $return_boolean_id ? 'present' : false;
-			}
-		}
-
-		return false;
-	}
-
-	/**
-	 * Maps the current location level to a basic Schema.org place type.
-	 *
-	 * @return string
-	 */
-	private function schema_place_type() {
-		$types = array(
-			'country' => 'Country',
-			'state'   => 'AdministrativeArea',
-			'city'    => 'City',
-		);
-		$type = $this->context->get( 'location_type' );
-
-		return isset( $types[ $type ] ) ? $types[ $type ] : 'Place';
 	}
 }

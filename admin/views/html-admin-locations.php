@@ -7,7 +7,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-$item = wp_parse_args(
+$item            = wp_parse_args(
 	is_array( $item ) ? $item : array(),
 	array(
 		'id'         => 0,
@@ -18,7 +18,7 @@ $item = wp_parse_args(
 		'state_id'   => 0,
 	)
 );
-$tab_labels = array(
+$tab_labels      = array(
 	'countries' => __( 'Countries', 'ch-pseo-pages-plugin' ),
 	'states'    => __( 'States', 'ch-pseo-pages-plugin' ),
 	'cities'    => __( 'Cities', 'ch-pseo-pages-plugin' ),
@@ -29,13 +29,29 @@ $singular_labels = array(
 	'cities'    => __( 'City', 'ch-pseo-pages-plugin' ),
 );
 $current_items = 'countries' === $tab ? $countries : ( 'states' === $tab ? $states : $cities );
+$cancel_url    = add_query_arg(
+	array(
+		'page' => 'ch-pseo-locations',
+		'tab'  => $tab,
+	),
+	admin_url( 'admin.php' )
+);
 ?>
 <div class="wrap ch-pseo-admin">
 	<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
 
 	<nav class="nav-tab-wrapper">
 		<?php foreach ( $tab_labels as $tab_key => $tab_label ) : ?>
-			<a class="nav-tab <?php echo $tab === $tab_key ? 'nav-tab-active' : ''; ?>" href="<?php echo esc_url( add_query_arg( array( 'page' => 'ch-pseo-locations', 'tab' => $tab_key ), admin_url( 'admin.php' ) ) ); ?>">
+			<?php
+			$tab_url = add_query_arg(
+				array(
+					'page' => 'ch-pseo-locations',
+					'tab'  => $tab_key,
+				),
+				admin_url( 'admin.php' )
+			);
+			?>
+			<a class="nav-tab <?php echo $tab === $tab_key ? 'nav-tab-active' : ''; ?>" href="<?php echo esc_url( $tab_url ); ?>">
 				<?php echo esc_html( $tab_label ); ?>
 			</a>
 		<?php endforeach; ?>
@@ -114,31 +130,51 @@ $current_items = 'countries' === $tab ? $countries : ( 'states' === $tab ? $stat
 
 				<?php submit_button( $item['id'] ? __( 'Update Location', 'ch-pseo-pages-plugin' ) : __( 'Add Location', 'ch-pseo-pages-plugin' ) ); ?>
 				<?php if ( $item['id'] ) : ?>
-					<a class="button" href="<?php echo esc_url( add_query_arg( array( 'page' => 'ch-pseo-locations', 'tab' => $tab ), admin_url( 'admin.php' ) ) ); ?>"><?php esc_html_e( 'Cancel', 'ch-pseo-pages-plugin' ); ?></a>
+					<a class="button" href="<?php echo esc_url( $cancel_url ); ?>"><?php esc_html_e( 'Cancel', 'ch-pseo-pages-plugin' ); ?></a>
 				<?php endif; ?>
 			</form>
 		</div>
 
 		<div class="ch-pseo-panel ch-pseo-panel-wide">
 			<h2><?php echo esc_html( $tab_labels[ $tab ] ); ?></h2>
+			<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post" data-ch-pseo-bulk-form>
+				<input type="hidden" name="action" value="ch_pseo_bulk_locations">
+				<input type="hidden" name="location_type" value="<?php echo esc_attr( $tab ); ?>">
+				<?php wp_nonce_field( 'ch_pseo_bulk_locations' ); ?>
+				<div class="ch-pseo-bulk-actions">
+					<select name="bulk_action" required>
+						<option value=""><?php esc_html_e( 'Bulk actions', 'ch-pseo-pages-plugin' ); ?></option>
+						<option value="active"><?php esc_html_e( 'Activate', 'ch-pseo-pages-plugin' ); ?></option>
+						<option value="inactive"><?php esc_html_e( 'Deactivate', 'ch-pseo-pages-plugin' ); ?></option>
+						<option value="delete"><?php esc_html_e( 'Delete', 'ch-pseo-pages-plugin' ); ?></option>
+					</select>
+					<?php submit_button( __( 'Apply', 'ch-pseo-pages-plugin' ), 'secondary', 'submit', false ); ?>
+				</div>
 			<table class="widefat striped">
 				<thead>
 					<tr>
+						<td class="check-column"><input type="checkbox" data-ch-pseo-select-all></td>
 						<th><?php esc_html_e( 'Name', 'ch-pseo-pages-plugin' ); ?></th>
 						<th><?php esc_html_e( 'Slug', 'ch-pseo-pages-plugin' ); ?></th>
-						<?php if ( 'countries' !== $tab ) : ?><th><?php esc_html_e( 'Country', 'ch-pseo-pages-plugin' ); ?></th><?php endif; ?>
-						<?php if ( 'cities' === $tab ) : ?><th><?php esc_html_e( 'State', 'ch-pseo-pages-plugin' ); ?></th><?php endif; ?>
+						<?php
+						if ( 'countries' !== $tab ) :
+							?>
+							<th><?php esc_html_e( 'Country', 'ch-pseo-pages-plugin' ); ?></th><?php endif; ?>
+						<?php
+						if ( 'cities' === $tab ) :
+							?>
+							<th><?php esc_html_e( 'State', 'ch-pseo-pages-plugin' ); ?></th><?php endif; ?>
 						<th><?php esc_html_e( 'Status', 'ch-pseo-pages-plugin' ); ?></th>
 						<th><?php esc_html_e( 'Actions', 'ch-pseo-pages-plugin' ); ?></th>
 					</tr>
 				</thead>
 				<tbody>
 					<?php if ( empty( $current_items ) ) : ?>
-						<tr><td colspan="6"><?php esc_html_e( 'No locations found.', 'ch-pseo-pages-plugin' ); ?></td></tr>
+						<tr><td colspan="7"><?php esc_html_e( 'No locations found.', 'ch-pseo-pages-plugin' ); ?></td></tr>
 					<?php else : ?>
 						<?php foreach ( $current_items as $row ) : ?>
 							<?php
-							$edit_url = add_query_arg(
+							$edit_url   = add_query_arg(
 								array(
 									'page'        => 'ch-pseo-locations',
 									'tab'         => $tab,
@@ -159,10 +195,17 @@ $current_items = 'countries' === $tab ? $countries : ( 'states' === $tab ? $stat
 							);
 							?>
 							<tr>
+								<th class="check-column"><input type="checkbox" name="location_ids[]" value="<?php echo esc_attr( $row['id'] ); ?>" data-ch-pseo-select-item></th>
 								<td><strong><?php echo esc_html( $row['name'] ); ?></strong></td>
 								<td><code><?php echo esc_html( $row['slug'] ); ?></code></td>
-								<?php if ( 'countries' !== $tab ) : ?><td><?php echo esc_html( ! empty( $row['country_name'] ) ? $row['country_name'] : '—' ); ?></td><?php endif; ?>
-								<?php if ( 'cities' === $tab ) : ?><td><?php echo esc_html( ! empty( $row['state_name'] ) ? $row['state_name'] : '—' ); ?></td><?php endif; ?>
+								<?php
+								if ( 'countries' !== $tab ) :
+									?>
+									<td><?php echo esc_html( ! empty( $row['country_name'] ) ? $row['country_name'] : '—' ); ?></td><?php endif; ?>
+								<?php
+								if ( 'cities' === $tab ) :
+									?>
+									<td><?php echo esc_html( ! empty( $row['state_name'] ) ? $row['state_name'] : '—' ); ?></td><?php endif; ?>
 								<td><?php echo esc_html( ucfirst( $row['status'] ) ); ?></td>
 								<td>
 									<a href="<?php echo esc_url( $edit_url ); ?>"><?php esc_html_e( 'Edit', 'ch-pseo-pages-plugin' ); ?></a>
@@ -174,6 +217,7 @@ $current_items = 'countries' === $tab ? $countries : ( 'states' === $tab ? $stat
 					<?php endif; ?>
 				</tbody>
 			</table>
+			</form>
 		</div>
 	</div>
 </div>

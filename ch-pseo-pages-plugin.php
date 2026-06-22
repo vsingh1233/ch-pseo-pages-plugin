@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       CH-PSEO Pages Plugin
  * Plugin URI:        https://example.com/
- * Description:       A reusable foundation for dynamic programmatic SEO pages in WordPress.
+ * Description:       Creates dynamic service-and-location SEO pages from reusable WordPress templates.
  * Version:           0.1.0
  * Requires at least: 6.2
  * Requires PHP:      7.4
@@ -18,12 +18,15 @@
 defined( 'ABSPATH' ) || exit;
 
 define( 'CH_PSEO_VERSION', '0.1.0' );
+define( 'CH_PSEO_DB_VERSION', '0.4.0' );
 define( 'CH_PSEO_PLUGIN_FILE', __FILE__ );
 define( 'CH_PSEO_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CH_PSEO_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 require_once CH_PSEO_PLUGIN_DIR . 'includes/helpers.php';
 require_once CH_PSEO_PLUGIN_DIR . 'includes/class-ch-pseo-database.php';
+require_once CH_PSEO_PLUGIN_DIR . 'includes/class-ch-pseo-migrator.php';
+require_once CH_PSEO_PLUGIN_DIR . 'includes/class-ch-pseo-importer.php';
 require_once CH_PSEO_PLUGIN_DIR . 'includes/class-ch-pseo-activator.php';
 require_once CH_PSEO_PLUGIN_DIR . 'includes/class-ch-pseo-deactivator.php';
 require_once CH_PSEO_PLUGIN_DIR . 'includes/class-ch-pseo-context.php';
@@ -44,12 +47,18 @@ register_deactivation_hook( __FILE__, array( 'CH_PSEO_Deactivator', 'deactivate'
  */
 function ch_pseo_run() {
 	$database   = new CH_PSEO_Database();
+	$migrator   = new CH_PSEO_Migrator( $database );
+
+	if ( ! $migrator->migrate() ) {
+		return;
+	}
+
 	$context    = new CH_PSEO_Context();
 	$router     = new CH_PSEO_Router( $database, $context );
 	$shortcodes = new CH_PSEO_Shortcodes( $context, $database );
 	$seo        = new CH_PSEO_SEO( $context, $database );
 	$sitemap    = new CH_PSEO_Sitemap( $database );
-	$schema     = new CH_PSEO_Schema( $context );
+	$schema     = new CH_PSEO_Schema( $context, $database, $seo );
 
 	$router->register_hooks();
 	$shortcodes->register_hooks();

@@ -13,6 +13,13 @@ defined( 'ABSPATH' ) || exit;
 class CH_PSEO_Router {
 
 	/**
+	 * Cached rewrite-definition transient key.
+	 *
+	 * @var string
+	 */
+	const REWRITE_DEFINITIONS_CACHE_KEY = 'ch_pseo_rewrite_definitions_v1';
+
+	/**
 	 * Database service.
 	 *
 	 * @var CH_PSEO_Database
@@ -83,53 +90,84 @@ class CH_PSEO_Router {
 	 * @return void
 	 */
 	public function register_rewrite_rules() {
-		global $wpdb;
+		foreach ( $this->get_rewrite_definitions() as $definition ) {
+			add_rewrite_rule( $definition['regex'], $definition['query'], 'top' );
+		}
+	}
 
-		$tables   = $this->database->get_table_names();
-		$services = $wpdb->get_results(
+	/**
+	 * Clears cached rewrite definitions.
+	 *
+	 * @return void
+	 */
+	public static function clear_rewrite_definitions_cache() {
+		delete_transient( self::REWRITE_DEFINITIONS_CACHE_KEY );
+	}
+
+	/**
+	 * Gets cached rewrite definitions or builds them from active services.
+	 *
+	 * @return array<int, array<string, string>>
+	 */
+	private function get_rewrite_definitions() {
+		$definitions = get_transient( self::REWRITE_DEFINITIONS_CACHE_KEY );
+		if ( is_array( $definitions ) ) {
+			return $definitions;
+		}
+
+		global $wpdb;
+		$tables     = $this->database->get_table_names();
+		$services   = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT id, url_base, location_structure
-				FROM {$tables['services']}
-				WHERE status = %s",
+				"SELECT id, service_slug, url_base, location_structure FROM {$tables['services']} WHERE status = %s",
 				'active'
 			),
 			ARRAY_A
 		); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$exclusions = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT service_id, excluded_slug FROM {$tables['url_exclusions']} WHERE status = %s",
+				'active'
+			),
+			ARRAY_A
+		); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$by_service = array( 0 => array() );
 
+		foreach ( $exclusions as $exclusion ) {
+			$key = $exclusion['service_id'] ? (int) $exclusion['service_id'] : 0;
+			$by_service[ $key ][] = $exclusion['excluded_slug'];
+		}
+
+		$definitions = array();
 		foreach ( $services as $service ) {
-			$base = $this->normalize_url_base( $service['url_base'] );
-
-			if ( '' === $base ) {
+			$route = ch_pseo_get_service_route( $service['url_base'], $service['service_slug'] );
+			if ( '' === $route ) {
 				continue;
 			}
-
-			$excluded_slugs = $wpdb->get_col(
-				$wpdb->prepare(
-					"SELECT excluded_slug
-					FROM {$tables['url_exclusions']}
-					WHERE status = %s AND (service_id = %d OR service_id IS NULL)",
-					'active',
-					$service['id']
-				)
-			); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-
-			$negative_lookahead = $this->build_exclusion_pattern( $excluded_slugs );
-			$base_pattern       = preg_quote( $base, '#' );
+			$service_exclusions = array_merge(
+				$by_service[0],
+				isset( $by_service[ (int) $service['id'] ] ) ? $by_service[ (int) $service['id'] ] : array()
+			);
+			$negative_lookahead = $this->build_exclusion_pattern( $service_exclusions );
+			$route_pattern      = preg_quote( $route, '#' );
 			$depth              = $this->get_structure_depth( $service['location_structure'] );
 
 			for ( $segment_count = $depth; $segment_count >= 1; $segment_count-- ) {
 				$captures = array();
 				$query    = 'index.php?ch_pseo_service=' . absint( $service['id'] );
-
 				for ( $index = 1; $index <= $segment_count; $index++ ) {
 					$captures[] = '([^/]+)';
 					$query     .= '&ch_pseo_path_' . $index . '=$matches[' . $index . ']';
 				}
-
-				$regex = '^' . $base_pattern . '/' . $negative_lookahead . implode( '/', $captures ) . '/?$';
-				add_rewrite_rule( $regex, $query, 'top' );
+				$definitions[] = array(
+					'regex' => '^' . $route_pattern . '/' . $negative_lookahead . implode( '/', $captures ) . '/?$',
+					'query' => $query,
+				);
 			}
 		}
+
+		set_transient( self::REWRITE_DEFINITIONS_CACHE_KEY, $definitions, DAY_IN_SECONDS );
+		return $definitions;
 	}
 
 	/**
@@ -228,7 +266,7 @@ class CH_PSEO_Router {
 			return;
 		}
 
-		$canonical = $this->build_canonical_url( $service['url_base'], $segments );
+		$canonical = ch_pseo_get_generated_url( $service['url_base'], $service['service_slug'], $segments );
 		$this->context->set_context( $service, $mapping, $locations, $canonical );
 
 		unset( $wp->query_vars['error'], $wp->query_vars['name'], $wp->query_vars['pagename'] );
@@ -335,7 +373,7 @@ class CH_PSEO_Router {
 				$locations['city'] = $wpdb->get_row(
 					$wpdb->prepare(
 						"SELECT * FROM {$tables['cities']}
-						WHERE (country_id = %d OR country_id IS NULL) AND state_id = %d AND slug = %s AND status = %s LIMIT 1",
+						WHERE (country_id = %d OR country_id = 0) AND state_id = %d AND slug = %s AND status = %s LIMIT 1",
 						$locations['country']['id'],
 						$locations['state']['id'],
 						$segments[2],
@@ -451,31 +489,6 @@ class CH_PSEO_Router {
 		}
 
 		return $patterns ? '(?!(?:' . implode( '|', array_unique( $patterns ) ) . ')(?:/|$))' : '';
-	}
-
-	/**
-	 * Normalizes a configured URL base for rewrite matching.
-	 *
-	 * @param string $url_base URL base.
-	 * @return string
-	 */
-	private function normalize_url_base( $url_base ) {
-		$segments = array_filter( explode( '/', trim( $url_base, '/' ) ) );
-		$segments = array_map( 'sanitize_title', $segments );
-
-		return implode( '/', array_filter( $segments ) );
-	}
-
-	/**
-	 * Builds the canonical URL from resolved route segments.
-	 *
-	 * @param string   $url_base URL base.
-	 * @param string[] $segments Location slugs.
-	 * @return string
-	 */
-	private function build_canonical_url( $url_base, $segments ) {
-		$path = trailingslashit( $this->normalize_url_base( $url_base ) . '/' . implode( '/', $segments ) );
-		return home_url( user_trailingslashit( $path ) );
 	}
 
 	/**

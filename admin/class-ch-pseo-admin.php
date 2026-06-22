@@ -59,6 +59,10 @@ class CH_PSEO_Admin {
 		add_action( 'admin_post_ch_pseo_clear_location_cache', array( $this, 'handle_clear_location_cache' ) );
 		add_action( 'admin_post_ch_pseo_clear_sitemap_cache', array( $this, 'handle_clear_sitemap_cache' ) );
 		add_action( 'admin_post_ch_pseo_export_urls_csv', array( $this, 'handle_export_urls_csv' ) );
+		add_action( 'admin_post_ch_pseo_import_csv', array( $this, 'handle_import_csv' ) );
+		add_action( 'admin_post_ch_pseo_download_csv_template', array( $this, 'handle_download_csv_template' ) );
+		add_action( 'admin_post_ch_pseo_bulk_locations', array( $this, 'handle_bulk_locations' ) );
+		add_action( 'admin_post_ch_pseo_bulk_mappings', array( $this, 'handle_bulk_mappings' ) );
 	}
 
 	/**
@@ -78,15 +82,15 @@ class CH_PSEO_Admin {
 		);
 
 		$submenus = array(
-			'ch-pseo'          => array( __( 'Dashboard', 'ch-pseo-pages-plugin' ), 'render_dashboard_page' ),
-			'ch-pseo-services' => array( __( 'Services', 'ch-pseo-pages-plugin' ), 'render_services_page' ),
-			'ch-pseo-locations' => array( __( 'Locations', 'ch-pseo-pages-plugin' ), 'render_locations_page' ),
-			'ch-pseo-mappings' => array( __( 'Service Location Mapping', 'ch-pseo-pages-plugin' ), 'render_mappings_page' ),
-			'ch-pseo-seo'      => array( __( 'SEO Settings', 'ch-pseo-pages-plugin' ), 'render_seo_settings_page' ),
-			'ch-pseo-schema'   => array( __( 'Schema Settings', 'ch-pseo-pages-plugin' ), 'render_schema_settings_page' ),
-			'ch-pseo-sitemap'  => array( __( 'Sitemap Settings', 'ch-pseo-pages-plugin' ), 'render_sitemap_settings_page' ),
+			'ch-pseo'            => array( __( 'Dashboard', 'ch-pseo-pages-plugin' ), 'render_dashboard_page' ),
+			'ch-pseo-services'   => array( __( 'Services', 'ch-pseo-pages-plugin' ), 'render_services_page' ),
+			'ch-pseo-locations'  => array( __( 'Locations', 'ch-pseo-pages-plugin' ), 'render_locations_page' ),
+			'ch-pseo-mappings'   => array( __( 'Service Location Mapping', 'ch-pseo-pages-plugin' ), 'render_mappings_page' ),
+			'ch-pseo-seo'        => array( __( 'SEO Settings', 'ch-pseo-pages-plugin' ), 'render_seo_settings_page' ),
+			'ch-pseo-schema'     => array( __( 'Schema Settings', 'ch-pseo-pages-plugin' ), 'render_schema_settings_page' ),
+			'ch-pseo-sitemap'    => array( __( 'Sitemap Settings', 'ch-pseo-pages-plugin' ), 'render_sitemap_settings_page' ),
 			'ch-pseo-exclusions' => array( __( 'URL Exclusions', 'ch-pseo-pages-plugin' ), 'render_exclusions_page' ),
-			'ch-pseo-tools'    => array( __( 'Tools', 'ch-pseo-pages-plugin' ), 'render_tools_page' ),
+			'ch-pseo-tools'      => array( __( 'Tools', 'ch-pseo-pages-plugin' ), 'render_tools_page' ),
 		);
 
 		foreach ( $submenus as $slug => $submenu ) {
@@ -157,21 +161,27 @@ class CH_PSEO_Admin {
 			return;
 		}
 
-		$notice = sanitize_key( wp_unslash( $_GET['ch_pseo_notice'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$notice  = sanitize_key( wp_unslash( $_GET['ch_pseo_notice'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$notices = array(
-			'saved'          => array( 'success', __( 'Changes saved.', 'ch-pseo-pages-plugin' ) ),
-			'deleted'        => array( 'success', __( 'Item deleted.', 'ch-pseo-pages-plugin' ) ),
-			'tables_repaired' => array( 'success', __( 'Database tables checked and updated.', 'ch-pseo-pages-plugin' ) ),
-			'cache_cleared'   => array( 'success', __( 'Location finder cache cleared.', 'ch-pseo-pages-plugin' ) ),
-			'sitemap_cache_cleared' => array( 'success', __( 'Sitemap cache cleared.', 'ch-pseo-pages-plugin' ) ),
-			'missing_fields' => array( 'error', __( 'Please complete all required fields.', 'ch-pseo-pages-plugin' ) ),
-			'invalid_item'   => array( 'error', __( 'The requested item could not be found.', 'ch-pseo-pages-plugin' ) ),
-			'duplicate_service_url' => array( 'error', __( 'Another active service already uses that URL base.', 'ch-pseo-pages-plugin' ) ),
+			'saved'                  => array( 'success', __( 'Changes saved.', 'ch-pseo-pages-plugin' ) ),
+			'deleted'                => array( 'success', __( 'Item deleted.', 'ch-pseo-pages-plugin' ) ),
+			'tables_repaired'        => array( 'success', __( 'Database tables checked and updated.', 'ch-pseo-pages-plugin' ) ),
+			'cache_cleared'          => array( 'success', __( 'Location finder cache cleared.', 'ch-pseo-pages-plugin' ) ),
+			'sitemap_cache_cleared'  => array( 'success', __( 'Sitemap cache cleared.', 'ch-pseo-pages-plugin' ) ),
+			'missing_fields'         => array( 'error', __( 'Please complete all required fields.', 'ch-pseo-pages-plugin' ) ),
+			'invalid_item'           => array( 'error', __( 'The requested item could not be found.', 'ch-pseo-pages-plugin' ) ),
+			'duplicate_service_slug' => array( 'error', __( 'Another service already uses that service slug.', 'ch-pseo-pages-plugin' ) ),
 			'duplicate_country_slug' => array( 'error', __( 'A country with that slug already exists.', 'ch-pseo-pages-plugin' ) ),
-			'duplicate_state_slug' => array( 'error', __( 'A state with that slug already exists under the selected country.', 'ch-pseo-pages-plugin' ) ),
-			'duplicate_city_slug' => array( 'error', __( 'A city with that slug already exists under the selected state.', 'ch-pseo-pages-plugin' ) ),
-			'duplicate_mapping' => array( 'error', __( 'That service-location mapping already exists.', 'ch-pseo-pages-plugin' ) ),
-			'database_error' => array( 'error', __( 'The database operation failed. Please try again.', 'ch-pseo-pages-plugin' ) ),
+			'duplicate_state_slug'   => array( 'error', __( 'A state with that slug already exists under the selected country.', 'ch-pseo-pages-plugin' ) ),
+			'duplicate_city_slug'    => array( 'error', __( 'A city with that slug already exists under the selected state.', 'ch-pseo-pages-plugin' ) ),
+			'duplicate_mapping'      => array( 'error', __( 'That service-location mapping already exists.', 'ch-pseo-pages-plugin' ) ),
+			'duplicate_exclusion'    => array( 'error', __( 'That exclusion already exists for the selected service scope.', 'ch-pseo-pages-plugin' ) ),
+			'invalid_relationship'   => array( 'error', __( 'The selected locations do not form a valid country, state, and city relationship.', 'ch-pseo-pages-plugin' ) ),
+			'invalid_template_page'  => array( 'error', __( 'The template must be a published WordPress page.', 'ch-pseo-pages-plugin' ) ),
+			'database_error'         => array( 'error', __( 'The database operation failed. Please try again.', 'ch-pseo-pages-plugin' ) ),
+			'bulk_updated'           => array( 'success', __( 'Bulk action completed.', 'ch-pseo-pages-plugin' ) ),
+			'import_complete'        => array( 'success', __( 'CSV import completed.', 'ch-pseo-pages-plugin' ) ),
+			'import_failed'          => array( 'error', __( 'CSV import failed. Review the import results.', 'ch-pseo-pages-plugin' ) ),
 		);
 
 		if ( ! isset( $notices[ $notice ] ) ) {
@@ -197,13 +207,13 @@ class CH_PSEO_Admin {
 		$tables = $this->database->get_table_names();
 
 		$counts = array(
-			'services'   => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tables['services']}" ), // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			'countries'  => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tables['countries']}" ), // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			'states'     => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tables['states']}" ), // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			'cities'     => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tables['cities']}" ), // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			'mappings'   => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$tables['service_locations']} WHERE status = %s", 'active' ) ), // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			'indexable'  => 0,
-			'noindex'    => 0,
+			'services'  => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tables['services']}" ), // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'countries' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tables['countries']}" ), // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'states'    => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tables['states']}" ), // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'cities'    => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tables['cities']}" ), // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'mappings'  => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$tables['service_locations']} WHERE status = %s", 'active' ) ), // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'indexable' => 0,
+			'noindex'   => 0,
 		);
 
 		$robots_counts = $wpdb->get_results(
@@ -265,21 +275,21 @@ class CH_PSEO_Admin {
 		global $wpdb;
 
 		$this->authorize_page();
-		$tables = $this->database->get_table_names();
-		$tab    = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'countries'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$tab    = in_array( $tab, array( 'countries', 'states', 'cities' ), true ) ? $tab : 'countries';
+		$tables  = $this->database->get_table_names();
+		$tab     = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'countries'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$tab     = in_array( $tab, array( 'countries', 'states', 'cities' ), true ) ? $tab : 'countries';
 		$item_id = isset( $_GET['location_id'] ) ? absint( $_GET['location_id'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$item    = $item_id ? $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$tables[ $tab ]} WHERE id = %d", $item_id ), ARRAY_A ) : null; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 		$countries = $wpdb->get_results( "SELECT * FROM {$tables['countries']} ORDER BY name ASC", ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$states     = $wpdb->get_results(
+		$states    = $wpdb->get_results(
 			"SELECT st.*, co.name AS country_name
 			FROM {$tables['states']} st
 			LEFT JOIN {$tables['countries']} co ON co.id = st.country_id
 			ORDER BY st.name ASC",
 			ARRAY_A
 		); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$cities = $wpdb->get_results(
+		$cities    = $wpdb->get_results(
 			"SELECT ci.*, st.name AS state_name, co.name AS country_name
 			FROM {$tables['cities']} ci
 			LEFT JOIN {$tables['states']} st ON st.id = ci.state_id
@@ -356,11 +366,10 @@ class CH_PSEO_Admin {
 		$this->render_plugin_settings_page(
 			'seo',
 			array(
-				'seo_default_title_suffix' => $this->get_setting( 'seo_default_title_suffix', '' ),
-				'seo_global_title_template' => $this->get_setting( 'seo_global_title_template', '' ),
+				'seo_default_title_suffix'        => $this->get_setting( 'seo_default_title_suffix', '' ),
+				'seo_global_title_template'       => $this->get_setting( 'seo_global_title_template', '' ),
 				'seo_global_description_template' => $this->get_setting( 'seo_global_description_template', '' ),
-				'seo_default_robots'       => $this->get_setting( 'seo_default_robots', 'index_follow' ),
-				'seo_enable_yoast'         => $this->get_setting( 'seo_enable_yoast', '1' ),
+				'seo_enable_yoast'                => $this->get_setting( 'seo_enable_yoast', '1' ),
 			)
 		);
 	}
@@ -404,7 +413,9 @@ class CH_PSEO_Admin {
 	 */
 	public function render_tools_page() {
 		$this->authorize_page();
-		$tables = $this->database->get_table_names();
+		$tables        = $this->database->get_table_names();
+		$import_result = get_transient( 'ch_pseo_import_result_' . get_current_user_id() );
+		delete_transient( 'ch_pseo_import_result_' . get_current_user_id() );
 
 		require CH_PSEO_PLUGIN_DIR . 'admin/views/html-admin-tools.php';
 	}
@@ -419,16 +430,16 @@ class CH_PSEO_Admin {
 
 		$this->authorize_action( 'ch_pseo_save_service' );
 
-		$service_id  = isset( $_POST['service_id'] ) ? absint( $_POST['service_id'] ) : 0;
+		$service_id   = isset( $_POST['service_id'] ) ? absint( $_POST['service_id'] ) : 0;
 		$service_name = isset( $_POST['service_name'] ) ? sanitize_text_field( wp_unslash( $_POST['service_name'] ) ) : '';
 		$service_slug = isset( $_POST['service_slug'] ) ? sanitize_title( wp_unslash( $_POST['service_slug'] ) ) : '';
-		$url_base     = isset( $_POST['url_base'] ) ? $this->sanitize_url_base( wp_unslash( $_POST['url_base'] ) ) : '';
+		$url_base     = isset( $_POST['url_base'] ) ? $this->sanitize_url_base( wp_unslash( $_POST['url_base'] ) ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized by sanitize_url_base().
 		$table        = $this->database->get_services_table();
 		$old_service  = $service_id
-			? $wpdb->get_row( $wpdb->prepare( "SELECT url_base, location_structure, status FROM {$table} WHERE id = %d", $service_id ), ARRAY_A ) // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			? $wpdb->get_row( $wpdb->prepare( "SELECT service_slug, url_base, location_structure, status FROM {$table} WHERE id = %d", $service_id ), ARRAY_A ) // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			: null;
 
-		if ( '' === $service_name || '' === $service_slug || '' === $url_base ) {
+		if ( '' === $service_name || '' === $service_slug ) {
 			$this->redirect( 'ch-pseo-services', 'missing_fields', $service_id ? array( 'service_id' => $service_id ) : array() );
 		}
 
@@ -442,42 +453,38 @@ class CH_PSEO_Admin {
 		$template_page_id   = isset( $_POST['template_page_id'] ) ? absint( $_POST['template_page_id'] ) : 0;
 		$status             = in_array( $status, $statuses, true ) ? $status : 'active';
 
-		if ( 'active' === $status ) {
-			$duplicate_service = $wpdb->get_var(
-				$wpdb->prepare(
-					"SELECT id FROM {$table}
-					WHERE url_base = %s
-						AND status = %s
-						AND id != %d
-					LIMIT 1",
-					$url_base,
-					'active',
-					$service_id
-				)
-			); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$service_args = $service_id ? array( 'service_id' => $service_id ) : array();
+		$duplicate_slug = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM {$table} WHERE service_slug = %s AND id != %d LIMIT 1",
+				$service_slug,
+				$service_id
+			)
+		); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $duplicate_slug ) {
+			$this->redirect( 'ch-pseo-services', 'duplicate_service_slug', $service_args );
+		}
 
-			if ( $duplicate_service ) {
-				$this->redirect(
-					'ch-pseo-services',
-					'duplicate_service_url',
-					$service_id ? array( 'service_id' => $service_id ) : array()
-				);
-			}
+		if (
+			( 'active' === $status && ! $template_page_id )
+			|| ( $template_page_id && ( 'page' !== get_post_type( $template_page_id ) || 'publish' !== get_post_status( $template_page_id ) ) )
+		) {
+			$this->redirect( 'ch-pseo-services', 'invalid_template_page', $service_args );
 		}
 
 		$data = array(
-			'service_name'           => $service_name,
-			'service_slug'           => $service_slug,
-			'url_base'               => $url_base,
-			'template_page_id'       => $template_page_id ? $template_page_id : null,
-			'location_structure'     => in_array( $location_structure, $structures, true ) ? $location_structure : 'country_state_city',
-			'status'                 => $status,
-			'robots_default'         => isset( $robots[ $robots_default ] ) ? $robots_default : 'index_follow',
-			'sitemap_include_default' => empty( $_POST['sitemap_include_default'] ) ? 0 : 1,
-			'meta_title_template'    => isset( $_POST['meta_title_template'] ) ? sanitize_textarea_field( wp_unslash( $_POST['meta_title_template'] ) ) : '',
+			'service_name'              => $service_name,
+			'service_slug'              => $service_slug,
+			'url_base'                  => $url_base,
+			'template_page_id'          => $template_page_id ? $template_page_id : null,
+			'location_structure'        => in_array( $location_structure, $structures, true ) ? $location_structure : 'country_state_city',
+			'status'                    => $status,
+			'robots_default'            => isset( $robots[ $robots_default ] ) ? $robots_default : 'index_follow',
+			'sitemap_include_default'   => empty( $_POST['sitemap_include_default'] ) ? 0 : 1,
+			'meta_title_template'       => isset( $_POST['meta_title_template'] ) ? sanitize_textarea_field( wp_unslash( $_POST['meta_title_template'] ) ) : '',
 			'meta_description_template' => isset( $_POST['meta_description_template'] ) ? sanitize_textarea_field( wp_unslash( $_POST['meta_description_template'] ) ) : '',
-			'h1_template'            => isset( $_POST['h1_template'] ) ? sanitize_textarea_field( wp_unslash( $_POST['h1_template'] ) ) : '',
-			'schema_type'            => isset( $_POST['schema_type'] ) ? sanitize_text_field( wp_unslash( $_POST['schema_type'] ) ) : '',
+			'h1_template'               => isset( $_POST['h1_template'] ) ? sanitize_textarea_field( wp_unslash( $_POST['h1_template'] ) ) : '',
+			'schema_type'               => isset( $_POST['schema_type'] ) ? sanitize_text_field( wp_unslash( $_POST['schema_type'] ) ) : '',
 		);
 
 		$result = $service_id
@@ -488,6 +495,7 @@ class CH_PSEO_Admin {
 			false !== $result
 			&& (
 				! $old_service
+				|| $old_service['service_slug'] !== $data['service_slug']
 				|| $old_service['url_base'] !== $data['url_base']
 				|| $old_service['location_structure'] !== $data['location_structure']
 				|| $old_service['status'] !== $data['status']
@@ -496,6 +504,7 @@ class CH_PSEO_Admin {
 			update_option( 'ch_pseo_flush_rewrite_rules', 1, false );
 		}
 		if ( false !== $result ) {
+			CH_PSEO_Router::clear_rewrite_definitions_cache();
 			CH_PSEO_Shortcodes::clear_location_tree_cache();
 			CH_PSEO_Sitemap::clear_cache();
 		}
@@ -525,6 +534,7 @@ class CH_PSEO_Admin {
 
 		if ( false !== $result ) {
 			update_option( 'ch_pseo_flush_rewrite_rules', 1, false );
+			CH_PSEO_Router::clear_rewrite_definitions_cache();
 			CH_PSEO_Shortcodes::clear_location_tree_cache();
 			CH_PSEO_Sitemap::clear_cache();
 		}
@@ -563,18 +573,39 @@ class CH_PSEO_Admin {
 			'slug'   => $slug,
 			'status' => $status,
 		);
+		$country_id = 0;
+		$state_id   = 0;
 
 		if ( 'states' === $type || 'cities' === $type ) {
-			$country_id        = isset( $_POST['country_id'] ) ? absint( $_POST['country_id'] ) : 0;
-			$data['country_id'] = $country_id ? $country_id : null;
+			$country_id         = isset( $_POST['country_id'] ) ? absint( $_POST['country_id'] ) : 0;
+			$data['country_id'] = $country_id;
 		}
 
 		if ( 'cities' === $type ) {
-			$state_id        = isset( $_POST['state_id'] ) ? absint( $_POST['state_id'] ) : 0;
-			$data['state_id'] = $state_id ? $state_id : null;
+			$state_id         = isset( $_POST['state_id'] ) ? absint( $_POST['state_id'] ) : 0;
+			$data['state_id'] = $state_id;
 		}
 
-		$table = $this->database->get_table_names()[ $type ];
+		$tables = $this->database->get_table_names();
+		$table  = $tables[ $type ];
+
+		if ( $country_id ) {
+			$country_exists = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$tables['countries']} WHERE id = %d LIMIT 1", $country_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			if ( ! $country_exists ) {
+				$this->redirect( 'ch-pseo-locations', 'invalid_relationship', array( 'tab' => $type ) );
+			}
+		}
+
+		if ( 'cities' === $type ) {
+			$state = $state_id
+				? $wpdb->get_row( $wpdb->prepare( "SELECT id, country_id FROM {$tables['states']} WHERE id = %d LIMIT 1", $state_id ), ARRAY_A ) // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				: null;
+			if ( ! $state || ( $country_id && (int) $state['country_id'] !== $country_id ) ) {
+				$this->redirect( 'ch-pseo-locations', 'invalid_relationship', array( 'tab' => $type ) );
+			}
+			$country_id         = (int) $state['country_id'];
+			$data['country_id'] = $country_id;
+		}
 
 		if ( 'countries' === $type ) {
 			$duplicate_notice = 'duplicate_country_slug';
@@ -697,24 +728,37 @@ class CH_PSEO_Admin {
 		$state_id   = isset( $_POST['state_id'] ) ? absint( $_POST['state_id'] ) : 0;
 		$city_id    = isset( $_POST['city_id'] ) ? absint( $_POST['city_id'] ) : 0;
 		$service    = $service_id ? $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$tables['services']} WHERE id = %d", $service_id ), ARRAY_A ) : null; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$city       = null;
 
 		if ( ! $service ) {
 			$this->redirect( 'ch-pseo-mappings', 'missing_fields' );
 		}
 
-		if ( $city_id ) {
-			$city = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$tables['cities']} WHERE id = %d", $city_id ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			if ( $city ) {
-				$state_id   = (int) $city['state_id'];
-				$country_id = (int) $city['country_id'];
-				if ( $state_id && ! $country_id ) {
-					$country_id = (int) $wpdb->get_var( $wpdb->prepare( "SELECT country_id FROM {$tables['states']} WHERE id = %d", $state_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				}
+		if ( $country_id ) {
+			$country_exists = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$tables['countries']} WHERE id = %d LIMIT 1", $country_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			if ( ! $country_exists ) {
+				$this->redirect( 'ch-pseo-mappings', 'invalid_relationship', $mapping_id ? array( 'mapping_id' => $mapping_id ) : array() );
 			}
 		}
 
-		if ( $state_id && ! $city_id ) {
-			$country_id = (int) $wpdb->get_var( $wpdb->prepare( "SELECT country_id FROM {$tables['states']} WHERE id = %d", $state_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $city_id ) {
+			$city = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$tables['cities']} WHERE id = %d", $city_id ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			if ( ! $city || ! $city['state_id'] || ( $state_id && (int) $city['state_id'] !== $state_id ) ) {
+				$this->redirect( 'ch-pseo-mappings', 'invalid_relationship', $mapping_id ? array( 'mapping_id' => $mapping_id ) : array() );
+			}
+			$state_id = (int) $city['state_id'];
+		}
+
+		if ( $state_id ) {
+			$state = $wpdb->get_row( $wpdb->prepare( "SELECT id, country_id FROM {$tables['states']} WHERE id = %d", $state_id ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			if (
+				! $state
+				|| ( $country_id && (int) $state['country_id'] !== $country_id )
+				|| ( $city && ! empty( $city['country_id'] ) && (int) $city['country_id'] !== (int) $state['country_id'] )
+			) {
+				$this->redirect( 'ch-pseo-mappings', 'invalid_relationship', $mapping_id ? array( 'mapping_id' => $mapping_id ) : array() );
+			}
+			$country_id = (int) $state['country_id'];
 		}
 
 		if ( ! $this->mapping_has_required_locations( $service['location_structure'], $country_id, $state_id, $city_id ) ) {
@@ -760,18 +804,18 @@ class CH_PSEO_Admin {
 		$sitemap  = isset( $_POST['sitemap_include'] ) ? sanitize_key( wp_unslash( $_POST['sitemap_include'] ) ) : '';
 
 		$data = array(
-			'service_id'             => $service_id,
-			'country_id'             => $country_id ? $country_id : null,
-			'state_id'               => $state_id ? $state_id : null,
-			'city_id'                => $city_id ? $city_id : null,
-			'status'                 => in_array( $status, $statuses, true ) ? $status : 'active',
-			'robots'                 => $robots,
-			'sitemap_include'        => in_array( $sitemap, array( '0', '1' ), true ) ? (int) $sitemap : null,
-			'custom_h1'              => isset( $_POST['custom_h1'] ) ? sanitize_textarea_field( wp_unslash( $_POST['custom_h1'] ) ) : '',
-			'custom_meta_title'      => isset( $_POST['custom_meta_title'] ) ? sanitize_textarea_field( wp_unslash( $_POST['custom_meta_title'] ) ) : '',
+			'service_id'              => $service_id,
+			'country_id'              => $country_id,
+			'state_id'                => $state_id,
+			'city_id'                 => $city_id,
+			'status'                  => in_array( $status, $statuses, true ) ? $status : 'active',
+			'robots'                  => $robots,
+			'sitemap_include'         => in_array( $sitemap, array( '0', '1' ), true ) ? (int) $sitemap : null,
+			'custom_h1'               => isset( $_POST['custom_h1'] ) ? sanitize_textarea_field( wp_unslash( $_POST['custom_h1'] ) ) : '',
+			'custom_meta_title'       => isset( $_POST['custom_meta_title'] ) ? sanitize_textarea_field( wp_unslash( $_POST['custom_meta_title'] ) ) : '',
 			'custom_meta_description' => isset( $_POST['custom_meta_description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['custom_meta_description'] ) ) : '',
-			'custom_schema_type'     => isset( $_POST['custom_schema_type'] ) ? sanitize_text_field( wp_unslash( $_POST['custom_schema_type'] ) ) : '',
-			'canonical_override'     => isset( $_POST['canonical_override'] ) ? esc_url_raw( wp_unslash( $_POST['canonical_override'] ) ) : '',
+			'custom_schema_type'      => isset( $_POST['custom_schema_type'] ) ? sanitize_text_field( wp_unslash( $_POST['custom_schema_type'] ) ) : '',
+			'canonical_override'      => isset( $_POST['canonical_override'] ) ? esc_url_raw( wp_unslash( $_POST['canonical_override'] ) ) : '',
 		);
 
 		$result = $mapping_id
@@ -819,8 +863,8 @@ class CH_PSEO_Admin {
 
 		$this->authorize_action( 'ch_pseo_save_exclusion' );
 
-		$exclusion_id = isset( $_POST['exclusion_id'] ) ? absint( $_POST['exclusion_id'] ) : 0;
-		$service_id   = isset( $_POST['service_id'] ) ? absint( $_POST['service_id'] ) : 0;
+		$exclusion_id  = isset( $_POST['exclusion_id'] ) ? absint( $_POST['exclusion_id'] ) : 0;
+		$service_id    = isset( $_POST['service_id'] ) ? absint( $_POST['service_id'] ) : 0;
 		$excluded_slug = isset( $_POST['excluded_slug'] ) ? sanitize_title( wp_unslash( $_POST['excluded_slug'] ) ) : '';
 		$reason        = isset( $_POST['reason'] ) ? sanitize_textarea_field( wp_unslash( $_POST['reason'] ) ) : '';
 		$status        = isset( $_POST['status'] ) ? sanitize_key( wp_unslash( $_POST['status'] ) ) : 'active';
@@ -859,8 +903,26 @@ class CH_PSEO_Admin {
 			}
 		}
 
-		$data = array(
-			'service_id'    => $service_id ? $service_id : null,
+		$duplicate = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM {$table}
+				WHERE service_id = %d AND excluded_slug = %s AND id != %d
+				LIMIT 1",
+				$service_id,
+				$excluded_slug,
+				$exclusion_id
+			)
+		); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $duplicate ) {
+			$this->redirect(
+				'ch-pseo-exclusions',
+				'duplicate_exclusion',
+				$exclusion_id ? array( 'exclusion_id' => $exclusion_id ) : array()
+			);
+		}
+
+		$data   = array(
+			'service_id'    => $service_id,
 			'excluded_slug' => $excluded_slug,
 			'reason'        => $reason,
 			'status'        => $status,
@@ -891,7 +953,7 @@ class CH_PSEO_Admin {
 			$this->redirect( 'ch-pseo-exclusions', 'invalid_item' );
 		}
 
-		$table = $this->database->get_url_exclusions_table();
+		$table            = $this->database->get_url_exclusions_table();
 		$exclusion_exists = $wpdb->get_var(
 			$wpdb->prepare( "SELECT id FROM {$table} WHERE id = %d LIMIT 1", $exclusion_id )
 		); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -923,34 +985,35 @@ class CH_PSEO_Admin {
 
 		$section = isset( $_POST['settings_section'] ) ? sanitize_key( wp_unslash( $_POST['settings_section'] ) ) : '';
 		$values  = array();
+		$page    = 'ch-pseo';
+		$old_slug = '';
+		$old_enabled = '';
 
 		if ( 'seo' === $section ) {
-			$robots = isset( $_POST['seo_default_robots'] ) ? sanitize_key( wp_unslash( $_POST['seo_default_robots'] ) ) : 'index_follow';
 			$values = array(
-				'seo_default_title_suffix' => isset( $_POST['seo_default_title_suffix'] ) ? sanitize_text_field( wp_unslash( $_POST['seo_default_title_suffix'] ) ) : '',
-				'seo_global_title_template' => isset( $_POST['seo_global_title_template'] ) ? sanitize_textarea_field( wp_unslash( $_POST['seo_global_title_template'] ) ) : '',
+				'seo_default_title_suffix'        => isset( $_POST['seo_default_title_suffix'] ) ? sanitize_text_field( wp_unslash( $_POST['seo_default_title_suffix'] ) ) : '',
+				'seo_global_title_template'       => isset( $_POST['seo_global_title_template'] ) ? sanitize_textarea_field( wp_unslash( $_POST['seo_global_title_template'] ) ) : '',
 				'seo_global_description_template' => isset( $_POST['seo_global_description_template'] ) ? sanitize_textarea_field( wp_unslash( $_POST['seo_global_description_template'] ) ) : '',
-				'seo_default_robots'       => isset( $this->get_robots_options()[ $robots ] ) ? $robots : 'index_follow',
-				'seo_enable_yoast'         => empty( $_POST['seo_enable_yoast'] ) ? '0' : '1',
+				'seo_enable_yoast'                => empty( $_POST['seo_enable_yoast'] ) ? '0' : '1',
 			);
-			$page = 'ch-pseo-seo';
+			$page   = 'ch-pseo-seo';
 		} elseif ( 'schema' === $section ) {
 			$values = array(
 				'schema_enabled'           => empty( $_POST['schema_enabled'] ) ? '0' : '1',
 				'schema_default_type'      => isset( $_POST['schema_default_type'] ) ? sanitize_text_field( wp_unslash( $_POST['schema_default_type'] ) ) : 'Service',
 				'schema_organization_name' => isset( $_POST['schema_organization_name'] ) ? sanitize_text_field( wp_unslash( $_POST['schema_organization_name'] ) ) : '',
 			);
-			$page = 'ch-pseo-schema';
+			$page   = 'ch-pseo-schema';
 		} elseif ( 'sitemap' === $section ) {
-			$old_slug = $this->get_setting( 'sitemap_slug', 'ch-pseo-pages-sitemap.xml' );
+			$old_slug    = $this->get_setting( 'sitemap_slug', 'ch-pseo-pages-sitemap.xml' );
 			$old_enabled = $this->get_setting( 'sitemap_enabled', '1' );
-			$slug = isset( $_POST['sitemap_slug'] ) ? sanitize_file_name( wp_unslash( $_POST['sitemap_slug'] ) ) : 'ch-pseo-pages-sitemap.xml';
-			$values = array(
+			$slug        = isset( $_POST['sitemap_slug'] ) ? sanitize_file_name( wp_unslash( $_POST['sitemap_slug'] ) ) : 'ch-pseo-pages-sitemap.xml';
+			$values      = array(
 				'sitemap_enabled'  => empty( $_POST['sitemap_enabled'] ) ? '0' : '1',
 				'sitemap_slug'     => $slug ? $slug : 'ch-pseo-pages-sitemap.xml',
 				'sitemap_max_urls' => (string) max( 1, min( 50000, isset( $_POST['sitemap_max_urls'] ) ? absint( $_POST['sitemap_max_urls'] ) : 50000 ) ),
 			);
-			$page = 'ch-pseo-sitemap';
+			$page        = 'ch-pseo-sitemap';
 		} else {
 			$this->redirect( 'ch-pseo', 'invalid_item' );
 		}
@@ -976,7 +1039,8 @@ class CH_PSEO_Admin {
 	 */
 	public function handle_repair_tables() {
 		$this->authorize_action( 'ch_pseo_repair_tables' );
-		$this->database->create_tables();
+		$migrator = new CH_PSEO_Migrator( $this->database );
+		$migrator->repair();
 		$this->redirect( 'ch-pseo-tools', 'tables_repaired' );
 	}
 
@@ -1065,6 +1129,128 @@ class CH_PSEO_Admin {
 	}
 
 	/**
+	 * Imports locations or mappings from an uploaded CSV.
+	 *
+	 * @return void
+	 */
+	public function handle_import_csv() {
+		$this->authorize_action( 'ch_pseo_import_csv' );
+
+		$type = isset( $_POST['import_type'] ) ? sanitize_key( wp_unslash( $_POST['import_type'] ) ) : '';
+		if ( ! in_array( $type, array( 'locations', 'mappings' ), true ) || empty( $_FILES['csv_file']['tmp_name'] ) ) {
+			$this->redirect( 'ch-pseo-tools', 'missing_fields' );
+		}
+
+		$file = $_FILES['csv_file']; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		if ( UPLOAD_ERR_OK !== (int) $file['error'] || ! is_uploaded_file( $file['tmp_name'] ) ) {
+			$this->redirect( 'ch-pseo-tools', 'import_failed' );
+		}
+
+		$importer = new CH_PSEO_Importer( $this->database );
+		$result   = $importer->import( $type, $file['tmp_name'], ! empty( $_POST['dry_run'] ) );
+
+		set_transient( 'ch_pseo_import_result_' . get_current_user_id(), $result, 10 * MINUTE_IN_SECONDS );
+		if ( empty( $result['errors'] ) && empty( $result['dry_run'] ) ) {
+			$this->invalidate_url_generation();
+		}
+
+		$this->redirect( 'ch-pseo-tools', empty( $result['errors'] ) ? 'import_complete' : 'import_failed' );
+	}
+
+	/**
+	 * Downloads a CSV import template.
+	 *
+	 * @return void
+	 */
+	public function handle_download_csv_template() {
+		$type = isset( $_GET['import_type'] ) ? sanitize_key( wp_unslash( $_GET['import_type'] ) ) : '';
+		$this->authorize_action( 'ch_pseo_download_csv_template_' . $type );
+
+		if ( ! in_array( $type, array( 'locations', 'mappings' ), true ) ) {
+			wp_die( esc_html__( 'Invalid CSV template type.', 'ch-pseo-pages-plugin' ) );
+		}
+
+		$importer = new CH_PSEO_Importer( $this->database );
+		$headers  = 'locations' === $type ? $importer->location_headers() : $importer->mapping_headers();
+
+		nocache_headers();
+		header( 'Content-Type: text/csv; charset=UTF-8' );
+		header( 'Content-Disposition: attachment; filename=ch-pseo-' . $type . '-template.csv' );
+		$output = fopen( 'php://output', 'w' );
+		if ( false === $output ) {
+			wp_die( esc_html__( 'Unable to create the CSV template.', 'ch-pseo-pages-plugin' ) );
+		}
+		fputcsv( $output, $headers );
+		fclose( $output );
+		exit;
+	}
+
+	/**
+	 * Applies a bulk action to location rows.
+	 *
+	 * @return void
+	 */
+	public function handle_bulk_locations() {
+		global $wpdb;
+
+		$this->authorize_action( 'ch_pseo_bulk_locations' );
+		$type   = isset( $_POST['location_type'] ) ? sanitize_key( wp_unslash( $_POST['location_type'] ) ) : '';
+		$action = isset( $_POST['bulk_action'] ) ? sanitize_key( wp_unslash( $_POST['bulk_action'] ) ) : '';
+		$ids    = isset( $_POST['location_ids'] ) ? array_filter( array_map( 'absint', (array) wp_unslash( $_POST['location_ids'] ) ) ) : array();
+
+		if (
+			! in_array( $type, array( 'countries', 'states', 'cities' ), true )
+			|| ! in_array( $action, array( 'active', 'inactive', 'delete' ), true )
+			|| ! $ids
+		) {
+			$this->redirect( 'ch-pseo-locations', 'missing_fields', array( 'tab' => $type ) );
+		}
+
+		$table = $this->database->get_table_names()[ $type ];
+		foreach ( $ids as $id ) {
+			if ( 'delete' === $action ) {
+				$this->delete_location_records( $type, $id );
+			} elseif ( in_array( $action, array( 'active', 'inactive' ), true ) ) {
+				$wpdb->update( $table, array( 'status' => $action ), array( 'id' => $id ), array( '%s' ), array( '%d' ) );
+			}
+		}
+
+		CH_PSEO_Shortcodes::clear_location_tree_cache();
+		CH_PSEO_Sitemap::clear_cache();
+		$this->redirect( 'ch-pseo-locations', 'bulk_updated', array( 'tab' => $type ) );
+	}
+
+	/**
+	 * Applies a bulk action to mapping rows.
+	 *
+	 * @return void
+	 */
+	public function handle_bulk_mappings() {
+		global $wpdb;
+
+		$this->authorize_action( 'ch_pseo_bulk_mappings' );
+		$action = isset( $_POST['bulk_action'] ) ? sanitize_key( wp_unslash( $_POST['bulk_action'] ) ) : '';
+		$ids    = isset( $_POST['mapping_ids'] ) ? array_filter( array_map( 'absint', (array) wp_unslash( $_POST['mapping_ids'] ) ) ) : array();
+
+		if ( ! in_array( $action, array( 'active', 'inactive', 'delete' ), true ) || ! $ids ) {
+			$this->redirect( 'ch-pseo-mappings', 'missing_fields' );
+		}
+
+		$table = $this->database->get_service_locations_table();
+		foreach ( $ids as $id ) {
+			if ( 'delete' === $action ) {
+				$wpdb->delete( $table, array( 'id' => $id ), array( '%d' ) );
+			} elseif ( in_array( $action, array( 'active', 'inactive' ), true ) ) {
+				$wpdb->update( $table, array( 'status' => $action ), array( 'id' => $id ), array( '%s' ), array( '%d' ) );
+			}
+		}
+
+		CH_PSEO_Shortcodes::clear_location_tree_cache();
+		CH_PSEO_Sitemap::clear_cache();
+		$this->redirect( 'ch-pseo-mappings', 'bulk_updated' );
+	}
+
+	/**
 	 * Renders a shared global settings view.
 	 *
 	 * @param string $section Setting section.
@@ -1073,7 +1259,6 @@ class CH_PSEO_Admin {
 	 */
 	private function render_plugin_settings_page( $section, $settings ) {
 		$this->authorize_page();
-		$robots_options = $this->get_robots_options();
 
 		require CH_PSEO_PLUGIN_DIR . 'admin/views/html-admin-plugin-settings.php';
 	}
@@ -1104,28 +1289,16 @@ class CH_PSEO_Admin {
 	private function save_setting( $key, $value ) {
 		global $wpdb;
 
-		$table  = $this->database->get_settings_table();
-		$item_id = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$table} WHERE setting_key = %s ORDER BY id DESC LIMIT 1", $key ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-
-		if ( $item_id ) {
-			$wpdb->update(
-				$table,
-				array( 'setting_value' => $value ),
-				array( 'id' => (int) $item_id ),
-				array( '%s' ),
-				array( '%d' )
-			);
-		} else {
-			$wpdb->insert(
-				$table,
-				array(
-					'setting_key'   => $key,
-					'setting_value' => $value,
-					'autoload'      => 'yes',
-				),
-				array( '%s', '%s', '%s' )
-			);
-		}
+		$table = $this->database->get_settings_table();
+		$wpdb->query(
+			$wpdb->prepare(
+				"INSERT INTO {$table} (setting_key, setting_value)
+				VALUES (%s, %s)
+				ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)",
+				$key,
+				$value
+			)
+		); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery
 	}
 
 	/**
@@ -1203,8 +1376,47 @@ class CH_PSEO_Admin {
 	 */
 	private function invalidate_url_generation() {
 		update_option( 'ch_pseo_flush_rewrite_rules', 1, false );
+		CH_PSEO_Router::clear_rewrite_definitions_cache();
 		CH_PSEO_Shortcodes::clear_location_tree_cache();
 		CH_PSEO_Sitemap::clear_cache();
+	}
+
+	/**
+	 * Deletes a location and all dependent rows.
+	 *
+	 * @param string $type    Location table key.
+	 * @param int    $item_id Location ID.
+	 * @return int|false
+	 */
+	private function delete_location_records( $type, $item_id ) {
+		global $wpdb;
+
+		$tables = $this->database->get_table_names();
+		if ( 'countries' === $type ) {
+			$state_ids = $wpdb->get_col( $wpdb->prepare( "SELECT id FROM {$tables['states']} WHERE country_id = %d", $item_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			foreach ( $state_ids as $state_id ) {
+				$city_ids = $wpdb->get_col( $wpdb->prepare( "SELECT id FROM {$tables['cities']} WHERE state_id = %d", $state_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				foreach ( $city_ids as $city_id ) {
+					$wpdb->delete( $tables['service_locations'], array( 'city_id' => (int) $city_id ), array( '%d' ) );
+				}
+				$wpdb->delete( $tables['service_locations'], array( 'state_id' => (int) $state_id ), array( '%d' ) );
+				$wpdb->delete( $tables['cities'], array( 'state_id' => (int) $state_id ), array( '%d' ) );
+			}
+			$wpdb->delete( $tables['service_locations'], array( 'country_id' => $item_id ), array( '%d' ) );
+			$wpdb->delete( $tables['cities'], array( 'country_id' => $item_id ), array( '%d' ) );
+			$wpdb->delete( $tables['states'], array( 'country_id' => $item_id ), array( '%d' ) );
+		} elseif ( 'states' === $type ) {
+			$city_ids = $wpdb->get_col( $wpdb->prepare( "SELECT id FROM {$tables['cities']} WHERE state_id = %d", $item_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			foreach ( $city_ids as $city_id ) {
+				$wpdb->delete( $tables['service_locations'], array( 'city_id' => (int) $city_id ), array( '%d' ) );
+			}
+			$wpdb->delete( $tables['service_locations'], array( 'state_id' => $item_id ), array( '%d' ) );
+			$wpdb->delete( $tables['cities'], array( 'state_id' => $item_id ), array( '%d' ) );
+		} else {
+			$wpdb->delete( $tables['service_locations'], array( 'city_id' => $item_id ), array( '%d' ) );
+		}
+
+		return $wpdb->delete( $tables[ $type ], array( 'id' => $item_id ), array( '%d' ) );
 	}
 
 	/**
@@ -1222,10 +1434,9 @@ class CH_PSEO_Admin {
 		switch ( $structure ) {
 			case 'country_state_city':
 				return $country_id > 0
-					&& ( 0 === $city_id || $state_id > 0 )
-					&& ( 0 === $state_id || $country_id > 0 );
+					&& ( 0 === $city_id || $state_id > 0 );
 			case 'state_city':
-				return $state_id > 0 && ( 0 === $city_id || $state_id > 0 );
+				return $state_id > 0;
 			case 'country_state':
 				return $country_id > 0;
 			case 'country':

@@ -33,10 +33,10 @@ class CH_PSEO_Context {
 		$state   = isset( $locations['state'] ) && is_array( $locations['state'] ) ? $locations['state'] : array();
 		$city    = isset( $locations['city'] ) && is_array( $locations['city'] ) ? $locations['city'] : array();
 
-		$country_name = isset( $country['name'] ) ? $country['name'] : '';
-		$state_name   = isset( $state['name'] ) ? $state['name'] : '';
-		$city_name    = isset( $city['name'] ) ? $city['name'] : '';
-		$location     = $city_name ? $city_name : ( $state_name ? $state_name : $country_name );
+		$country_name  = isset( $country['name'] ) ? $country['name'] : '';
+		$state_name    = isset( $state['name'] ) ? $state['name'] : '';
+		$city_name     = isset( $city['name'] ) ? $city['name'] : '';
+		$location      = $city_name ? $city_name : ( $state_name ? $state_name : $country_name );
 		$location_type = $city_name ? 'city' : ( $state_name ? 'state' : 'country' );
 
 		if ( 'city' === $location_type ) {
@@ -77,7 +77,7 @@ class CH_PSEO_Context {
 			'city'                => $city,
 		);
 
-		$title_template = ! empty( $mapping['custom_meta_title'] ) ? $mapping['custom_meta_title'] : $service['meta_title_template'];
+		$title_template       = ! empty( $mapping['custom_meta_title'] ) ? $mapping['custom_meta_title'] : $service['meta_title_template'];
 		$description_template = ! empty( $mapping['custom_meta_description'] ) ? $mapping['custom_meta_description'] : $service['meta_description_template'];
 
 		$this->data['meta_title']       = $this->replace_tokens( $title_template );
@@ -179,4 +179,3 @@ class CH_PSEO_Context {
 		return ! empty( $this->data );
 	}
 }
-

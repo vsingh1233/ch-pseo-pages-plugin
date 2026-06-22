@@ -21,4 +21,3 @@ class CH_PSEO_Deactivator {
 		flush_rewrite_rules();
 	}
 }
-

@@ -7,7 +7,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-$mapping = wp_parse_args(
+$mapping        = wp_parse_args(
 	is_array( $mapping ) ? $mapping : array(),
 	array(
 		'id'                      => 0,
@@ -155,9 +155,22 @@ $robots_options = array(
 
 		<div class="ch-pseo-panel ch-pseo-panel-wide">
 			<h2><?php esc_html_e( 'Existing Mappings', 'ch-pseo-pages-plugin' ); ?></h2>
+			<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post" data-ch-pseo-bulk-form>
+				<input type="hidden" name="action" value="ch_pseo_bulk_mappings">
+				<?php wp_nonce_field( 'ch_pseo_bulk_mappings' ); ?>
+				<div class="ch-pseo-bulk-actions">
+					<select name="bulk_action" required>
+						<option value=""><?php esc_html_e( 'Bulk actions', 'ch-pseo-pages-plugin' ); ?></option>
+						<option value="active"><?php esc_html_e( 'Activate', 'ch-pseo-pages-plugin' ); ?></option>
+						<option value="inactive"><?php esc_html_e( 'Deactivate', 'ch-pseo-pages-plugin' ); ?></option>
+						<option value="delete"><?php esc_html_e( 'Delete', 'ch-pseo-pages-plugin' ); ?></option>
+					</select>
+					<?php submit_button( __( 'Apply', 'ch-pseo-pages-plugin' ), 'secondary', 'submit', false ); ?>
+				</div>
 			<table class="widefat striped">
 				<thead>
 					<tr>
+						<td class="check-column"><input type="checkbox" data-ch-pseo-select-all></td>
 						<th><?php esc_html_e( 'Service', 'ch-pseo-pages-plugin' ); ?></th>
 						<th><?php esc_html_e( 'Location', 'ch-pseo-pages-plugin' ); ?></th>
 						<th><?php esc_html_e( 'Status', 'ch-pseo-pages-plugin' ); ?></th>
@@ -168,18 +181,31 @@ $robots_options = array(
 				</thead>
 				<tbody>
 					<?php if ( empty( $mappings ) ) : ?>
-						<tr><td colspan="6"><?php esc_html_e( 'No mappings have been created.', 'ch-pseo-pages-plugin' ); ?></td></tr>
+						<tr><td colspan="7"><?php esc_html_e( 'No mappings have been created.', 'ch-pseo-pages-plugin' ); ?></td></tr>
 					<?php else : ?>
 						<?php foreach ( $mappings as $row ) : ?>
 							<?php
 							$location_parts = array_filter( array( $row['country_name'], $row['state_name'], $row['city_name'] ) );
-							$edit_url = add_query_arg( array( 'page' => 'ch-pseo-mappings', 'mapping_id' => $row['id'] ), admin_url( 'admin.php' ) );
-							$delete_url = wp_nonce_url(
-								add_query_arg( array( 'action' => 'ch_pseo_delete_mapping', 'mapping_id' => $row['id'] ), admin_url( 'admin-post.php' ) ),
+							$edit_url       = add_query_arg(
+								array(
+									'page'       => 'ch-pseo-mappings',
+									'mapping_id' => $row['id'],
+								),
+								admin_url( 'admin.php' )
+							);
+							$delete_url     = wp_nonce_url(
+								add_query_arg(
+									array(
+										'action'     => 'ch_pseo_delete_mapping',
+										'mapping_id' => $row['id'],
+									),
+									admin_url( 'admin-post.php' )
+								),
 								'ch_pseo_delete_mapping_' . $row['id']
 							);
 							?>
 							<tr>
+								<th class="check-column"><input type="checkbox" name="mapping_ids[]" value="<?php echo esc_attr( $row['id'] ); ?>" data-ch-pseo-select-item></th>
 								<td><?php echo esc_html( $row['service_name'] ); ?></td>
 								<td><?php echo esc_html( $location_parts ? implode( ' / ', $location_parts ) : '—' ); ?></td>
 								<td><?php echo esc_html( ucfirst( $row['status'] ) ); ?></td>
@@ -211,6 +237,7 @@ $robots_options = array(
 					<?php endif; ?>
 				</tbody>
 			</table>
+			</form>
 		</div>
 	</div>
 </div>

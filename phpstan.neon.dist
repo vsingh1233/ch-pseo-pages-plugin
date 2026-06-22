@@ -1,0 +1,19 @@
+includes:
+	- vendor/szepeviktor/phpstan-wordpress/extension.neon
+
+parameters:
+	level: 5
+	paths:
+		- ch-pseo-pages-plugin.php
+		- uninstall.php
+		- includes
+		- admin
+	excludePaths:
+		analyse:
+			- admin/views
+			- vendor
+	tmpDir: .phpstan-cache
+	parallel:
+		maximumNumberOfProcesses: 1
+	bootstrapFiles:
+		- tests/phpstan-bootstrap.php

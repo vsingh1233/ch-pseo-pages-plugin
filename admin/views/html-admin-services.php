@@ -7,23 +7,23 @@
 
 defined( 'ABSPATH' ) || exit;
 
-$defaults = array(
-	'id'                      => 0,
-	'service_name'            => '',
-	'service_slug'            => '',
-	'url_base'                => '',
-	'template_page_id'        => '',
-	'location_structure'      => 'country_state_city',
-	'status'                  => 'active',
-	'robots_default'          => 'index_follow',
-	'sitemap_include_default' => 1,
-	'meta_title_template'     => '',
+$defaults       = array(
+	'id'                        => 0,
+	'service_name'              => '',
+	'service_slug'              => '',
+	'url_base'                  => '',
+	'template_page_id'          => '',
+	'location_structure'        => 'country_state_city',
+	'status'                    => 'active',
+	'robots_default'            => 'index_follow',
+	'sitemap_include_default'   => 1,
+	'meta_title_template'       => '',
 	'meta_description_template' => '',
-	'h1_template'             => '',
-	'schema_type'             => '',
+	'h1_template'               => '',
+	'schema_type'               => '',
 );
-$service  = wp_parse_args( is_array( $service ) ? $service : array(), $defaults );
-$structures = array(
+$service        = wp_parse_args( is_array( $service ) ? $service : array(), $defaults );
+$structures     = array(
 	'country_state_city' => __( 'Country / State / City', 'ch-pseo-pages-plugin' ),
 	'state_city'         => __( 'State / City', 'ch-pseo-pages-plugin' ),
 	'country_state'      => __( 'Country / State', 'ch-pseo-pages-plugin' ),
@@ -61,10 +61,10 @@ $robots_options = array(
 						<td><input class="regular-text" id="service-slug" name="service_slug" type="text" value="<?php echo esc_attr( $service['service_slug'] ); ?>" required></td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="url-base"><?php esc_html_e( 'URL base', 'ch-pseo-pages-plugin' ); ?></label></th>
+						<th scope="row"><label for="url-base"><?php esc_html_e( 'Base prefix', 'ch-pseo-pages-plugin' ); ?></label></th>
 						<td>
-							<input class="regular-text" id="url-base" name="url_base" type="text" value="<?php echo esc_attr( $service['url_base'] ); ?>" placeholder="services" required>
-							<p class="description"><?php esc_html_e( 'Enter a path without leading or trailing slashes, for example personal-injury.', 'ch-pseo-pages-plugin' ); ?></p>
+							<input class="regular-text" id="url-base" name="url_base" type="text" value="<?php echo esc_attr( $service['url_base'] ); ?>" placeholder="services">
+							<p class="description"><?php esc_html_e( 'Optional. With “services”, URLs begin /services/service-slug/. Leave blank for /service-slug/.', 'ch-pseo-pages-plugin' ); ?></p>
 						</td>
 					</tr>
 					<tr>
@@ -72,9 +72,9 @@ $robots_options = array(
 						<td>
 							<select id="template-page" name="template_page_id">
 								<option value=""><?php esc_html_e( 'Select a page', 'ch-pseo-pages-plugin' ); ?></option>
-								<?php foreach ( $pages as $page ) : ?>
-									<option value="<?php echo esc_attr( $page->ID ); ?>" <?php selected( (int) $service['template_page_id'], $page->ID ); ?>>
-										<?php echo esc_html( $page->post_title ? $page->post_title : __( '(no title)', 'ch-pseo-pages-plugin' ) ); ?>
+								<?php foreach ( $pages as $template_page ) : ?>
+									<option value="<?php echo esc_attr( $template_page->ID ); ?>" <?php selected( (int) $service['template_page_id'], $template_page->ID ); ?>>
+										<?php echo esc_html( $template_page->post_title ? $template_page->post_title : __( '(no title)', 'ch-pseo-pages-plugin' ) ); ?>
 									</option>
 								<?php endforeach; ?>
 							</select>
@@ -144,7 +144,7 @@ $robots_options = array(
 				<thead>
 					<tr>
 						<th><?php esc_html_e( 'Service', 'ch-pseo-pages-plugin' ); ?></th>
-						<th><?php esc_html_e( 'URL base', 'ch-pseo-pages-plugin' ); ?></th>
+						<th><?php esc_html_e( 'Route root', 'ch-pseo-pages-plugin' ); ?></th>
 						<th><?php esc_html_e( 'Structure', 'ch-pseo-pages-plugin' ); ?></th>
 						<th><?php esc_html_e( 'Status', 'ch-pseo-pages-plugin' ); ?></th>
 						<th><?php esc_html_e( 'Actions', 'ch-pseo-pages-plugin' ); ?></th>
@@ -156,7 +156,7 @@ $robots_options = array(
 					<?php else : ?>
 						<?php foreach ( $services as $row ) : ?>
 							<?php
-							$edit_url = add_query_arg(
+							$edit_url   = add_query_arg(
 								array(
 									'page'       => 'ch-pseo-services',
 									'service_id' => $row['id'],
@@ -176,7 +176,7 @@ $robots_options = array(
 							?>
 							<tr>
 								<td><strong><?php echo esc_html( $row['service_name'] ); ?></strong><br><code><?php echo esc_html( $row['service_slug'] ); ?></code></td>
-								<td><code><?php echo esc_html( $row['url_base'] ); ?></code></td>
+								<td><code>/<?php echo esc_html( ch_pseo_get_service_route( $row['url_base'], $row['service_slug'] ) ); ?>/</code></td>
 								<td><?php echo esc_html( isset( $structures[ $row['location_structure'] ] ) ? $structures[ $row['location_structure'] ] : $row['location_structure'] ); ?></td>
 								<td><?php echo esc_html( ucfirst( $row['status'] ) ); ?></td>
 								<td>
