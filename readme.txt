@@ -173,3 +173,4 @@ transactional location and mapping imports, and generated-URL export.
 * Added a Tools-screen reference for configuration tokens and template shortcodes.
 * Added import-format examples and editable CSV exports for locations and mappings.
 * Added effective last-modified dates to PSEO sitemap URLs and the Yoast sitemap index.
+* Added a managed, customizable noindex/nofollow finder page.
