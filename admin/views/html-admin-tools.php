@@ -50,6 +50,37 @@ defined( 'ABSPATH' ) || exit;
 	</div>
 
 	<div class="ch-pseo-panel ch-pseo-settings-panel">
+		<h2><?php esc_html_e( 'Finder Page', 'ch-pseo-pages-plugin' ); ?></h2>
+		<p><?php esc_html_e( 'Create or update a public page containing the service and location finder. The managed page is always marked noindex, nofollow so search engines do not index the utility form.', 'ch-pseo-pages-plugin' ); ?></p>
+
+		<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
+			<input type="hidden" name="action" value="ch_pseo_save_finder_page">
+			<input type="hidden" name="finder_page_id" value="<?php echo esc_attr( $finder_page_id ); ?>">
+			<?php wp_nonce_field( 'ch_pseo_save_finder_page' ); ?>
+
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row"><label for="ch-pseo-finder-page-title"><?php esc_html_e( 'Page name', 'ch-pseo-pages-plugin' ); ?></label></th>
+					<td><input class="regular-text" id="ch-pseo-finder-page-title" name="finder_page_title" type="text" required value="<?php echo esc_attr( $finder_page ? $finder_page->post_title : __( 'Find a Service', 'ch-pseo-pages-plugin' ) ); ?>"></td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="ch-pseo-finder-page-slug"><?php esc_html_e( 'Page URL', 'ch-pseo-pages-plugin' ); ?></label></th>
+					<td>
+						<code><?php echo esc_html( trailingslashit( home_url( '/' ) ) ); ?></code>
+						<input id="ch-pseo-finder-page-slug" name="finder_page_slug" type="text" required value="<?php echo esc_attr( $finder_page ? $finder_page->post_name : 'find-a-service' ); ?>">
+						<code>/</code>
+					</td>
+				</tr>
+			</table>
+
+			<?php submit_button( $finder_page ? __( 'Update Finder Page', 'ch-pseo-pages-plugin' ) : __( 'Create Finder Page', 'ch-pseo-pages-plugin' ) ); ?>
+			<?php if ( $finder_page && 'publish' === $finder_page->post_status ) : ?>
+				<a class="button" href="<?php echo esc_url( get_permalink( $finder_page ) ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'View Finder Page', 'ch-pseo-pages-plugin' ); ?></a>
+			<?php endif; ?>
+		</form>
+	</div>
+
+	<div class="ch-pseo-panel ch-pseo-settings-panel">
 		<h2><?php esc_html_e( 'Dynamic Values Reference', 'ch-pseo-pages-plugin' ); ?></h2>
 		<p>
 			<?php esc_html_e( 'Use tokens in CH-PSEO configuration fields such as meta title, meta description, and H1 templates. Use shortcodes inside the reusable WordPress template page or page-builder content.', 'ch-pseo-pages-plugin' ); ?>

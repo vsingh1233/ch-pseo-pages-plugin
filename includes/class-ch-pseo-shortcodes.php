@@ -81,6 +81,46 @@ class CH_PSEO_Shortcodes {
 		// rendered layout/module output when it bypasses the standard content path.
 		add_filter( 'et_builder_render_layout', array( $this, 'process_divi_shortcodes' ), 20 );
 		add_filter( 'et_builder_module_content', array( $this, 'process_divi_shortcodes' ), 20 );
+		add_filter( 'wp_robots', array( $this, 'filter_finder_page_robots' ), 20 );
+		add_filter( 'wpseo_robots', array( $this, 'filter_finder_page_yoast_robots' ), 20 );
+	}
+
+	/**
+	 * Makes the managed finder page noindex and nofollow in WordPress.
+	 *
+	 * @param array<string, bool|string> $robots Current robots directives.
+	 * @return array<string, bool|string>
+	 */
+	public function filter_finder_page_robots( $robots ) {
+		if ( ! $this->is_managed_finder_page() ) {
+			return $robots;
+		}
+
+		unset( $robots['index'], $robots['follow'] );
+		$robots['noindex']  = true;
+		$robots['nofollow'] = true;
+
+		return $robots;
+	}
+
+	/**
+	 * Makes the managed finder page noindex and nofollow in Yoast.
+	 *
+	 * @param string $robots Current Yoast robots value.
+	 * @return string
+	 */
+	public function filter_finder_page_yoast_robots( $robots ) {
+		return $this->is_managed_finder_page() ? 'noindex, nofollow' : $robots;
+	}
+
+	/**
+	 * Checks whether WordPress is rendering the managed finder page.
+	 *
+	 * @return bool
+	 */
+	private function is_managed_finder_page() {
+		$page_id = absint( get_option( 'ch_pseo_finder_page_id', 0 ) );
+		return $page_id > 0 && is_page( $page_id );
 	}
 
 	/**

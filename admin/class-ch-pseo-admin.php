@@ -60,6 +60,7 @@ class CH_PSEO_Admin {
 		add_action( 'admin_post_ch_pseo_clear_sitemap_cache', array( $this, 'handle_clear_sitemap_cache' ) );
 		add_action( 'admin_post_ch_pseo_export_urls_csv', array( $this, 'handle_export_urls_csv' ) );
 		add_action( 'admin_post_ch_pseo_export_data_csv', array( $this, 'handle_export_data_csv' ) );
+		add_action( 'admin_post_ch_pseo_save_finder_page', array( $this, 'handle_save_finder_page' ) );
 		add_action( 'admin_post_ch_pseo_import_csv', array( $this, 'handle_import_csv' ) );
 		add_action( 'admin_post_ch_pseo_download_csv_template', array( $this, 'handle_download_csv_template' ) );
 		add_action( 'admin_post_ch_pseo_bulk_locations', array( $this, 'handle_bulk_locations' ) );
@@ -183,6 +184,7 @@ class CH_PSEO_Admin {
 			'bulk_updated'           => array( 'success', __( 'Bulk action completed.', 'ch-pseo-pages-plugin' ) ),
 			'import_complete'        => array( 'success', __( 'CSV import completed.', 'ch-pseo-pages-plugin' ) ),
 			'import_failed'          => array( 'error', __( 'CSV import failed. Review the import results.', 'ch-pseo-pages-plugin' ) ),
+			'finder_page_saved'      => array( 'success', __( 'Finder page created or updated with noindex, nofollow enabled.', 'ch-pseo-pages-plugin' ) ),
 		);
 
 		if ( ! isset( $notices[ $notice ] ) ) {
@@ -417,8 +419,66 @@ class CH_PSEO_Admin {
 		$tables        = $this->database->get_table_names();
 		$import_result = get_transient( 'ch_pseo_import_result_' . get_current_user_id() );
 		delete_transient( 'ch_pseo_import_result_' . get_current_user_id() );
+		$finder_page_id = absint( get_option( 'ch_pseo_finder_page_id', 0 ) );
+		$finder_page    = $finder_page_id ? get_post( $finder_page_id ) : null;
+
+		if ( ! $finder_page ) {
+			$candidate = get_page_by_path( 'find-a-service', OBJECT, 'page' );
+			if ( $candidate && false !== strpos( $candidate->post_content, '[ch_pseo_location_finder' ) ) {
+				$finder_page    = $candidate;
+				$finder_page_id = (int) $candidate->ID;
+				update_option( 'ch_pseo_finder_page_id', $finder_page_id, false );
+			}
+		}
 
 		require CH_PSEO_PLUGIN_DIR . 'admin/views/html-admin-tools.php';
+	}
+
+	/**
+	 * Creates or updates the managed public location-finder page.
+	 *
+	 * @return void
+	 */
+	public function handle_save_finder_page() {
+		$this->authorize_action( 'ch_pseo_save_finder_page' );
+
+		$page_id = isset( $_POST['finder_page_id'] ) ? absint( $_POST['finder_page_id'] ) : 0;
+		$title   = isset( $_POST['finder_page_title'] ) ? sanitize_text_field( wp_unslash( $_POST['finder_page_title'] ) ) : '';
+		$slug    = isset( $_POST['finder_page_slug'] ) ? sanitize_title( wp_unslash( $_POST['finder_page_slug'] ) ) : '';
+
+		if ( '' === $title || '' === $slug ) {
+			$this->redirect( 'ch-pseo-tools', 'missing_fields' );
+		}
+
+		$post_data = array(
+			'post_type'    => 'page',
+			'post_status'  => 'publish',
+			'post_title'   => $title,
+			'post_name'    => $slug,
+		);
+		if ( $page_id && 'page' === get_post_type( $page_id ) ) {
+			$current_page    = get_post( $page_id );
+			$post_data['ID'] = $page_id;
+			if ( $current_page && false === strpos( $current_page->post_content, '[ch_pseo_location_finder' ) ) {
+				$post_data['post_content'] = trim( $current_page->post_content . "\n\n" . '[ch_pseo_location_finder button_text="Open Service Page"]' );
+			}
+		} else {
+			$post_data['post_content'] = '[ch_pseo_location_finder button_text="Open Service Page"]';
+		}
+
+		$result = wp_insert_post( $post_data, true );
+		if ( is_wp_error( $result ) ) {
+			$this->redirect( 'ch-pseo-tools', 'database_error' );
+		}
+
+		$page_id = (int) $result;
+		update_option( 'ch_pseo_finder_page_id', $page_id, false );
+
+		// Keep Yoast's stored page-level controls aligned with runtime filters.
+		update_post_meta( $page_id, '_yoast_wpseo_meta-robots-noindex', '1' );
+		update_post_meta( $page_id, '_yoast_wpseo_meta-robots-nofollow', '1' );
+
+		$this->redirect( 'ch-pseo-tools', 'finder_page_saved' );
 	}
 
 	/**
