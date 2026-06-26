@@ -61,6 +61,11 @@ class CH_PSEO_SEO {
 		add_filter( 'wpseo_metadesc', array( $this, 'filter_meta_description' ) );
 		add_filter( 'wpseo_canonical', array( $this, 'filter_canonical' ) );
 		add_filter( 'wpseo_robots', array( $this, 'filter_robots' ) );
+		add_filter( 'wpseo_opengraph_title', array( $this, 'filter_opengraph_title' ) );
+		add_filter( 'wpseo_opengraph_desc', array( $this, 'filter_opengraph_description' ) );
+		add_filter( 'wpseo_opengraph_url', array( $this, 'filter_opengraph_url' ) );
+		add_filter( 'wpseo_twitter_title', array( $this, 'filter_twitter_title' ) );
+		add_filter( 'wpseo_twitter_description', array( $this, 'filter_twitter_description' ) );
 
 		add_filter( 'pre_get_document_title', array( $this, 'filter_document_title' ), 20 );
 		add_filter( 'wp_robots', array( $this, 'filter_wordpress_robots' ), 20 );
@@ -86,6 +91,56 @@ class CH_PSEO_SEO {
 	 */
 	public function filter_meta_description( $description ) {
 		return $this->should_filter_yoast() ? $this->get_meta_description() : $description;
+	}
+
+	/**
+	 * Filters the Yoast Open Graph title for a valid PSEO request.
+	 *
+	 * @param string $title Existing Open Graph title.
+	 * @return string
+	 */
+	public function filter_opengraph_title( $title ) {
+		return $this->filter_title( $title );
+	}
+
+	/**
+	 * Filters the Yoast Open Graph description for a valid PSEO request.
+	 *
+	 * @param string $description Existing Open Graph description.
+	 * @return string
+	 */
+	public function filter_opengraph_description( $description ) {
+		return $this->filter_meta_description( $description );
+	}
+
+	/**
+	 * Filters the Yoast Open Graph URL for a valid PSEO request.
+	 *
+	 * @param string $url Existing Open Graph URL.
+	 * @return string
+	 */
+	public function filter_opengraph_url( $url ) {
+		return $this->filter_canonical( $url );
+	}
+
+	/**
+	 * Filters the Yoast Twitter title for a valid PSEO request.
+	 *
+	 * @param string $title Existing Twitter title.
+	 * @return string
+	 */
+	public function filter_twitter_title( $title ) {
+		return $this->filter_title( $title );
+	}
+
+	/**
+	 * Filters the Yoast Twitter description for a valid PSEO request.
+	 *
+	 * @param string $description Existing Twitter description.
+	 * @return string
+	 */
+	public function filter_twitter_description( $description ) {
+		return $this->filter_meta_description( $description );
 	}
 
 	/**
